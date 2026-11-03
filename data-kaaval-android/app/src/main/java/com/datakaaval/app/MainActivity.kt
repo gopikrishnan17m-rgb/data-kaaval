@@ -1,6 +1,9 @@
 package com.datakaaval.app
 
+import android.Manifest
 import android.app.Activity
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -45,6 +48,12 @@ class MainActivity : Activity() {
         view.addJavascriptInterface(Bridge(this), "KaavalNative")
         view.loadUrl("https://appassets.androidplatform.net/assets/index.html")
 
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 2)
+        }
+
         val work = PeriodicWorkRequestBuilder<CheckWorker>(15, TimeUnit.MINUTES).build()
         WorkManager.getInstance(applicationContext)
             .enqueueUniquePeriodicWork("kaaval-check", ExistingPeriodicWorkPolicy.KEEP, work)
@@ -54,6 +63,7 @@ class MainActivity : Activity() {
         super.onResume()
         visible = true
         view.onResume()
+        MonitorService.start(this)
         view.evaluateJavascript("window.onNativeResume&&window.onNativeResume()", null)
     }
 

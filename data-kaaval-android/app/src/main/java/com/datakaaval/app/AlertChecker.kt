@@ -18,17 +18,20 @@ object AlertChecker {
     private fun fmt(mb: Double): String =
         if (mb >= 1024) String.format(Locale.US, "%.2f GB", mb / 1024) else "${Math.round(mb)} MB"
 
+    @Synchronized
     fun check(ctx: Context) {
         val raw = ctx.getSharedPreferences("cfg", Context.MODE_PRIVATE).getString("json", null) ?: return
         if (!UsageReader.hasAccess(ctx)) return
         val cfg = JSONObject(raw)
         val plan = cfg.optDouble("plan", 0.0)
+        val limits = cfg.optJSONObject("limits") ?: JSONObject()
+        if (plan <= 0 && limits.length() == 0) return
+
         val warn = cfg.optDouble("warn", 80.0) / 100.0
         val popup = cfg.optBoolean("popup", true)
         val notifyOn = cfg.optBoolean("notify", false)
         val wifi = cfg.optBoolean("wifi", true)
         val ta = cfg.optString("lang", "en") == "ta"
-        val limits = cfg.optJSONObject("limits") ?: JSONObject()
         val names = cfg.optJSONObject("names") ?: JSONObject()
 
         val today = UsageReader.today(ctx, wifi)
@@ -50,19 +53,18 @@ object AlertChecker {
             val used = today[id] ?: 0.0
             val name = if (id == "hs") (if (ta) "மொபைல் ஹாட்ஸ்பாட்" else "Mobile hotspot") else names.optString(id, id)
             val tag = "${id}@${lim.toInt()}"
+            val pct = Math.round(used / lim * 100).toInt()
             if (used >= lim) {
                 once("w$tag")
                 if (once("o$tag")) {
                     val title = if (ta) "$name — வரம்பு எட்டியது" else "$name limit reached"
                     val body = if (ta) "இன்றைய வரம்பை எட்டிவிட்டீர்கள்" else "You reached today's limit"
-                    alert(ctx, title, body, "${fmt(used)} / ${fmt(lim)}", true, popup, notifyOn, tag.hashCode())
+                    alert(ctx, title, body, "${fmt(used)} / ${fmt(lim)}", pct, true, popup, notifyOn, tag.hashCode(), ta)
                 }
             } else if (used >= lim * warn) {
                 if (once("w$tag")) {
-                    val title = name
-                    val body = if (ta) "${Math.round(used / lim * 100)}% பயன்படுத்தப்பட்டது"
-                    else "${Math.round(used / lim * 100)}% of today's limit used"
-                    alert(ctx, title, body, "${fmt(used)} / ${fmt(lim)}", false, popup, notifyOn, tag.hashCode())
+                    val body = if (ta) "$pct% பயன்படுத்தப்பட்டது" else "$pct% of today's limit used"
+                    alert(ctx, name, body, "${fmt(used)} / ${fmt(lim)}", pct, false, popup, notifyOn, tag.hashCode(), ta)
                 }
             }
         }
@@ -70,31 +72,40 @@ object AlertChecker {
         if (plan > 0) {
             val total = today.values.sum()
             val tag = "plan@${plan.toInt()}"
+            val pct = Math.round(total / plan * 100).toInt()
             if (total >= plan) {
                 once("w$tag")
                 if (once("o$tag")) {
-                    val title = if (ta) "வரம்பு எட்டியது" else "Daily data limit reached"
+                    val title = if (ta) "தினசரி வரம்பு எட்டியது" else "Daily data limit reached"
                     val body = if (ta) "இன்றைய டேட்டா திட்டம் முழுவதும் தீர்ந்தது" else "You used your whole daily data plan"
-                    alert(ctx, title, body, "${fmt(total)} / ${fmt(plan)}", true, popup, notifyOn, tag.hashCode())
+                    alert(ctx, title, body, "${fmt(total)} / ${fmt(plan)}", pct, true, popup, notifyOn, tag.hashCode(), ta)
                 }
             } else if (total >= plan * warn) {
                 if (once("w$tag")) {
                     val title = if (ta) "வரம்பு நெருங்குகிறது" else "Almost at your limit"
                     val body = if (ta) "${fmt(plan - total)} மீதம்" else "${fmt(plan - total)} left today"
-                    alert(ctx, title, body, "${fmt(total)} / ${fmt(plan)}", false, popup, notifyOn, tag.hashCode())
+                    alert(ctx, title, body, "${fmt(total)} / ${fmt(plan)}", pct, false, popup, notifyOn, tag.hashCode(), ta)
                 }
             }
         }
     }
 
     private fun alert(
-        ctx: Context, title: String, body: String, nums: String,
-        over: Boolean, popup: Boolean, notifyOn: Boolean, id: Int
+        ctx: Context, title: String, body: String, nums: String, pct: Int,
+        over: Boolean, popup: Boolean, notifyOn: Boolean, id: Int, ta: Boolean
     ) {
+        if (OverlayManager.canDraw(ctx)) {
+            if (over && popup) OverlayManager.showLimit(ctx, title, body, nums, pct, ta)
+            else OverlayManager.showBanner(ctx, title, "$body · $nums")
+            if (notifyOn) notifyPlain(ctx, title, body, nums, id)
+            return
+        }
+
         val full = Intent(ctx, AlertActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             .putExtra("title", title).putExtra("body", body)
             .putExtra("nums", nums).putExtra("over", over)
+            .putExtra("pct", pct.toFloat()).putExtra("ta", ta)
 
         if (MainActivity.visible) {
             if (over && popup) {
@@ -110,11 +121,18 @@ object AlertChecker {
             return
         }
 
-        val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (!nm.areNotificationsEnabled()) return
         val wantsFull = over && popup
         if (!wantsFull && !notifyOn) return
+        post(ctx, title, body, nums, id, if (wantsFull) full else null)
+    }
 
+    private fun notifyPlain(ctx: Context, title: String, body: String, nums: String, id: Int) {
+        post(ctx, title, body, nums, id, null)
+    }
+
+    private fun post(ctx: Context, title: String, body: String, nums: String, id: Int, full: Intent?) {
+        val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (!nm.areNotificationsEnabled()) return
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL, "Data alerts", NotificationManager.IMPORTANCE_HIGH)
         )
@@ -127,7 +145,7 @@ object AlertChecker {
             .setAutoCancel(true)
             .setCategory(Notification.CATEGORY_ALARM)
             .setContentIntent(openApp)
-        if (wantsFull) {
+        if (full != null) {
             b.setFullScreenIntent(PendingIntent.getActivity(ctx, id + 1, full, flags), true)
         }
         nm.notify(id, b.build())
