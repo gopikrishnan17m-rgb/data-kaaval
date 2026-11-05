@@ -4,7 +4,10 @@ import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Build
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.view.WindowInsets
+import android.widget.FrameLayout
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -23,12 +26,35 @@ class MainActivity : Activity() {
     }
 
     private lateinit var view: WebView
+    private lateinit var root: FrameLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         view = WebView(this)
-        setContentView(view)
+        root = FrameLayout(this)
+        root.setBackgroundColor(0xFF0A0F1C.toInt())
+        root.addView(view, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        setContentView(root)
         web = view
+
+        // Android 15+ always draws edge to edge, so keep the page clear of the status bar, navigation bar and keyboard.
+        if (Build.VERSION.SDK_INT >= 30) window.setDecorFitsSystemWindows(false)
+        root.setOnApplyWindowInsetsListener { v, insets ->
+            if (Build.VERSION.SDK_INT >= 30) {
+                val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+                val ime = insets.getInsets(WindowInsets.Type.ime())
+                v.setPadding(bars.left, bars.top, bars.right, Math.max(bars.bottom, ime.bottom))
+                WindowInsets.CONSUMED
+            } else {
+                @Suppress("DEPRECATION")
+                v.setPadding(
+                    insets.systemWindowInsetLeft, insets.systemWindowInsetTop,
+                    insets.systemWindowInsetRight, insets.systemWindowInsetBottom
+                )
+                @Suppress("DEPRECATION")
+                insets.consumeSystemWindowInsets()
+            }
+        }
 
         val loader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
@@ -59,9 +85,15 @@ class MainActivity : Activity() {
             .enqueueUniquePeriodicWork("kaaval-check", ExistingPeriodicWorkPolicy.KEEP, work)
     }
 
+    /** Paints the area behind the status bar and navigation bar with the app's background colours. */
+    fun setChrome(top: Int, bottom: Int) {
+        root.background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(top, bottom))
+    }
+
     override fun onResume() {
         super.onResume()
         visible = true
+        AdGate.onOpen(this)
         view.onResume()
         MonitorService.start(this)
         view.evaluateJavascript("window.onNativeResume&&window.onNativeResume()", null)

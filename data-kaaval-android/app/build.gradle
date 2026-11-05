@@ -5,17 +5,36 @@ plugins {
 
 android {
     namespace 'com.datakaaval.app'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.datakaaval.app"
         minSdk 29
-        targetSdk 34
-        versionCode 3
-        versionName "1.2"
+        targetSdk 36
+        versionCode 6
+        versionName "1.5"
+
+        // AdMob. These are Google's TEST ids. Put your own ids in gradle.properties before publishing.
+        def adApp = (project.findProperty('ADMOB_APP_ID') ?: 'ca-app-pub-3940256099942544~3347511713').toString()
+        def adUnit = (project.findProperty('ADMOB_INTERSTITIAL_ID') ?: 'ca-app-pub-3940256099942544/1033173712').toString()
+        manifestPlaceholders = [admobAppId: adApp]
+        buildConfigField 'String', 'AD_INTERSTITIAL', '"' + adUnit + '"'
+        buildConfigField 'boolean', 'ADS_ENABLED', (project.findProperty('ADS_ENABLED') ?: 'true').toString()
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     signingConfigs {
+        release {
+            if (System.getenv('KEYSTORE_FILE')) {
+                storeFile file(System.getenv('KEYSTORE_FILE'))
+                storePassword System.getenv('KEYSTORE_PASSWORD')
+                keyAlias System.getenv('KEY_ALIAS')
+                keyPassword System.getenv('KEY_PASSWORD')
+            }
+        }
         debug {
             storeFile file('debug.keystore')
             storePassword 'android'
@@ -27,6 +46,9 @@ android {
     buildTypes {
         release {
             minifyEnabled false
+            if (System.getenv('KEYSTORE_FILE')) {
+                signingConfig signingConfigs.release
+            }
         }
     }
     compileOptions {
@@ -41,4 +63,5 @@ android {
 dependencies {
     implementation 'androidx.webkit:webkit:1.10.0'
     implementation 'androidx.work:work-runtime-ktx:2.9.0'
+    implementation 'com.google.android.gms:play-services-ads:23.6.0'
 }

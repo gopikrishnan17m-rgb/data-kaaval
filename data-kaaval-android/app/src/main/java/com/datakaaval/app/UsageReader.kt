@@ -42,24 +42,32 @@ object UsageReader {
         return out
     }
 
-    private fun idOf(c: Context, uid: Int, names: MutableMap<String, String>): String {
+    private val uidCache = java.util.concurrent.ConcurrentHashMap<Int, String>()
+
+    private fun idOf(c: Context, uid: Int, names: MutableMap<String, String>?): String {
         if (uid == NetworkStats.Bucket.UID_TETHERING) return "hs"
         if (uid == NetworkStats.Bucket.UID_REMOVED) {
-            names["removed"] = "Removed apps"
+            names?.put("removed", "Removed apps")
             return "removed"
         }
         if (uid < 10000) {
-            names["system"] = "Android system"
+            names?.put("system", "Android system")
             return "system"
         }
         val pm = c.packageManager
-        val pkgs = pm.getPackagesForUid(uid)
-        if (pkgs == null || pkgs.isEmpty()) {
-            names["other"] = "Other apps"
+        var p: String? = uidCache[uid]
+        if (p == null) {
+            val pkgs = pm.getPackagesForUid(uid)
+            if (pkgs != null && pkgs.isNotEmpty()) {
+                p = pkgs[0]
+                uidCache[uid] = p
+            }
+        }
+        if (p == null) {
+            names?.put("other", "Other apps")
             return "other"
         }
-        val p = pkgs[0]
-        if (!names.containsKey(p)) {
+        if (names != null && !names.containsKey(p)) {
             names[p] = try {
                 pm.getApplicationLabel(pm.getApplicationInfo(p, 0)).toString()
             } catch (e: Exception) {
@@ -69,7 +77,7 @@ object UsageReader {
         return p
     }
 
-    private fun toMb(c: Context, bytes: Map<Int, Long>, names: MutableMap<String, String>): Map<String, Double> {
+    private fun toMb(c: Context, bytes: Map<Int, Long>, names: MutableMap<String, String>?): Map<String, Double> {
         val out = HashMap<String, Double>()
         for ((uid, b) in bytes) {
             val id = idOf(c, uid, names)
@@ -90,8 +98,7 @@ object UsageReader {
 
     fun today(c: Context, wifi: Boolean): Map<String, Double> {
         val start = midnight(0).timeInMillis
-        val names = HashMap<String, String>()
-        return toMb(c, uidBytes(c, wifi, start, System.currentTimeMillis()), names)
+        return toMb(c, uidBytes(c, wifi, start, System.currentTimeMillis() + 3 * 3600_000L), null)
     }
 
     fun readDays(c: Context, wifi: Boolean): String {
@@ -102,7 +109,7 @@ object UsageReader {
         for (i in 29 downTo 0) {
             val s = midnight(i)
             val e = midnight(i - 1)
-            val end = if (e.timeInMillis > now) now else e.timeInMillis
+            val end = if (e.timeInMillis > now) now + 3 * 3600_000L else e.timeInMillis
             val perId = toMb(c, uidBytes(c, wifi, s.timeInMillis, end), names)
             val o = JSONObject()
             for ((id, mb) in perId) {

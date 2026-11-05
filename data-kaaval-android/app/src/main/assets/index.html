@@ -207,6 +207,14 @@ input[type=range]{width:100%;accent-color:var(--accent);min-height:30px}
 .sw.sq{border-radius:12px;width:44px;height:44px}
 .sw.g{background:linear-gradient(135deg,var(--c),var(--c2))}
 .pickrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.sw.custom{background:conic-gradient(#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00);color:#fff;font-weight:900;font-size:1.25rem;display:grid;place-items:center;text-shadow:0 1px 3px #000a}
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.crow{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;border:1px solid var(--line);background:var(--surface2);color:var(--fg);font-weight:var(--wt);text-align:left;font-size:.88rem}
+.cdot{width:30px;height:30px;border-radius:10px;border:2px solid var(--line);flex:none}
+.pkr{-webkit-appearance:none;appearance:none;width:100%;height:28px;border-radius:14px;margin:6px 0 14px;border:1px solid var(--line);outline:none}
+.pkr::-webkit-slider-thumb{-webkit-appearance:none;width:32px;height:32px;border-radius:50%;background:#fff;border:3px solid #0009;box-shadow:0 1px 5px #0007}
+.pkprev{height:64px;border-radius:18px;border:2px solid var(--line);margin:10px 0 14px}
+.pkq{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
 .pickrow span{font-size:.8rem;color:var(--muted)}
 
 /* app logos */
@@ -410,6 +418,15 @@ function apply(){
   }else{
     PR.forEach(function(p){r.style.removeProperty(p)});
   }
+  if(u.card){
+    var cl=lum(u.card)>0.55,mx=cl?'#000':'#fff';
+    r.style.setProperty('--surface',u.card);
+    r.style.setProperty('--surface2','color-mix(in srgb,'+u.card+' 84%,'+mx+')');
+    r.style.setProperty('--line','color-mix(in srgb,'+u.card+' 72%,'+mx+')');
+  }
+  if(u.okc)r.style.setProperty('--ok',u.okc);
+  if(u.warnc)r.style.setProperty('--warn',u.warnc);
+  if(u.overc)r.style.setProperty('--over',u.overc);
   if(typeof NATIVE!=='undefined'&&NATIVE){
     var top,bt,lt;
     if(bg){top=bg.c1;bt=bg.t==='grad'?bg.c2:bg.c1;lt=lightBg}
@@ -644,10 +661,13 @@ function limitsView(){
     '<div class="chips" style="margin-top:12px">'+presets+'</div>'+
     '<div class="field" style="margin-top:16px"><label for="warnR">Warn me at <b id="warnV">'+S.warn+'%</b></label><input id="warnR" type="range" min="50" max="95" step="5" value="'+S.warn+'" data-in="warn"></div></section>'+
   '<section class="card"><h2>Alerts</h2>'+
-    sw('popup','Full-screen popup when a limit is reached',S.popup)+
+    sw('popup','Alert when a limit is reached',S.popup)+
+    '<div class="lbl" style="margin:14px 0 8px">Alert style</div><div class="seg">'+
+      [['pet','Cat'],['full','Full screen'],['both','Both']].map(function(o){return '<button data-act="alertstyle" data-v="'+o[0]+'" class="'+((S.alertStyle||'pet')===o[0]?'on':'')+'">'+o[1]+'</button>'}).join('')+'</div>'+
+    '<div style="height:8px"></div>'+sw('petSound','Cat voice and meow',S.petSound!==false)+
     sw('notify','Phone notification',S.notify)+
-    '<p class="sub" style="margin-top:8px">Warnings at '+S.warn+'% show a message at the bottom. Reaching 100% opens the full-screen popup.</p></section>'+
-  modeCard+hsCardL+
+    '<p class="sub" style="margin-top:8px">Warnings at '+S.warn+'% show a message at the bottom. Reaching 100% shows the alert at once, even on top of other apps.</p></section>'+
+  hsCardL+
   '<section class="card"><h2>App limits</h2>'+rows+
     '<p class="sub" style="margin-top:10px">Sum of app limits: '+(lsum?fs(lsum):'none')+(S.plan&&lsum>S.plan?' (above your daily plan)':'')+'</p></section>'+
   (NATIVE?'':'<section class="card"><h2>Add an app</h2>'+
@@ -663,9 +683,9 @@ var FGS=['#FFFFFF','#FFE27A','#7CF5D4','#FFB4D0','#A9C7FF','#111111'];
 function styleView(){
   var u=S.ui;
   var acc='<button class="sw auto'+(!u.accent?' on':'')+'" data-act="accent" data-c="" aria-label="Default accent"></button>'+ACC.map(function(c){return '<button class="sw'+(u.accent===c?' on':'')+'" style="--c:'+c+'" data-act="accent" data-c="'+c+'" aria-label="Accent '+c+'"></button>'}).join('')+
-    '<input type="color" id="accCustom" value="'+(u.accent||'#2F7BFF')+'" data-in="acccustom" aria-label="Custom accent color">';
+    '<button class="sw custom" data-act="pick" data-t="accent" aria-label="Custom accent colour">+</button>';
   var fg='<button class="sw auto'+(!u.fg?' on':'')+'" data-act="fg" data-c="" aria-label="Automatic text color"></button>'+FGS.map(function(c){return '<button class="sw'+(u.fg===c?' on':'')+'" style="--c:'+c+'" data-act="fg" data-c="'+c+'" aria-label="Text color '+c+'"></button>'}).join('')+
-    '<input type="color" id="fgCustom" value="'+(u.fg||'#FFFFFF')+'" data-in="fgcustom" aria-label="Custom text color">';
+    '<button class="sw custom" data-act="pick" data-t="fg" aria-label="Custom text colour">+</button>';
   function segd(act,key,opts,cur){return '<div class="seg">'+opts.map(function(o){return '<button data-act="'+act+'" data-v="'+o[0]+'" class="'+(String(cur)===String(o[0])?'on':'')+'">'+o[1]+'</button>'}).join('')+'</div>'}
   var BGS=['#0A0F1C','#111827','#1A1033','#0B2B26','#2A0F1A','#1F1A0B','#000000','#1E40AF','#7C3AED','#BE185D','#047857','#B45309','#0E7490','#F2F5FA','#FFFFFF','#FFF4E5','#E8F7EE','#EAF1FF','#FDE8F1','#F1EAFF','#FFFBD6','#E0F7FA'];
   var GRD=[['#0F2027','#2C5364'],['#1A2980','#26D0CE'],['#42275A','#734B6D'],['#FF512F','#DD2476'],['#F7971E','#FFD200'],['#11998E','#38EF7D'],['#8E2DE2','#4A00E0'],['#FC466B','#3F5EFB'],['#0F0C29','#302B63'],['#FFECD2','#FCB69F'],['#E0EAFC','#CFDEF3'],['#C9FFBF','#FFAFBD']];
@@ -676,11 +696,14 @@ function styleView(){
   var bgCard='<section class="card"><h2>Background</h2><div class="lbl" style="margin-bottom:8px">Solid colors</div><div class="swatches">'+bgSolid+'</div>'+
     '<div class="lbl" style="margin:16px 0 8px">Gradients</div><div class="swatches">'+bgGrad+'</div>'+
     '<div class="lbl" style="margin:16px 0 8px">Make your own</div>'+
-    '<div class="pickrow"><span>Solid</span><input type="color" id="bgSolid" value="'+(bgc?bgc.c1:'#0A0F1C')+'" data-in="bgsolid" aria-label="Custom background color">'+
-    '<span>Gradient</span><input type="color" id="bgG1" value="'+(bgc&&bgc.t==='grad'?bgc.c1:'#1A2980')+'" data-in="bggrad" aria-label="Gradient start color">'+
-    '<input type="color" id="bgG2" value="'+(bgc&&bgc.t==='grad'?bgc.c2:'#26D0CE')+'" data-in="bggrad" aria-label="Gradient end color"></div></section>';
+    '<div class="pickrow"><button class="sw sq custom" data-act="pick" data-t="bg1" aria-label="Custom background colour">+</button><span>Solid</span>'+
+    '<button class="sw sq custom" data-act="pick" data-t="bg2" aria-label="Custom gradient end colour">+</button><span>Gradient end</span></div></section>';
+  function cdot(t,label){return '<button class="crow" data-act="pick" data-t="'+t+'"><span class="cdot" style="background:'+pkGet(t)+'"></span><span>'+label+'</span></button>'}
+  var myCard='<section class="card"><h2>Your own colours</h2><p class="sub" style="margin-bottom:12px">Tap any item and mix any colour you like with the sliders.</p><div class="cgrid">'+
+    cdot('bg1','Background')+cdot('bg2','Gradient end')+cdot('card','Cards and boxes')+cdot('fg','Text')+cdot('accent','Buttons and accent')+cdot('okc','Normal (ring)')+cdot('warnc','Warning')+cdot('overc','Limit reached')+
+    '</div><div class="actions" style="margin-top:14px"><button class="btn" data-act="colors-reset">Reset all colours</button></div></section>';
   return '<section class="card"><h2>Preview</h2><div class="sample"><span class="fx" id="sampleTxt">'+fs(1380)+' used today</span></div><p class="sub" style="margin-top:6px">Changes apply everywhere right away.</p></section>'+
-  bgCard+
+  bgCard+myCard+
   '<section class="card"><h2>Colors</h2><div class="lbl" style="margin-bottom:8px">Accent</div><div class="swatches">'+acc+'</div>'+
     '<div class="lbl" style="margin:16px 0 8px">Text color</div><div class="swatches">'+fg+'</div></section>'+
   '<section class="card"><h2>Text</h2><div class="lbl" style="margin-bottom:8px">Animation</div>'+
@@ -700,10 +723,20 @@ function permsStatusCard(){
     return '<div class="lrow"><div class="grow"><b>'+r[0]+'</b><div class="sub">'+r[3]+'</div></div>'+(r[1]?'<span class="pill">Allowed</span>':'<button class="btn pri sm" data-act="'+r[2]+'">Allow</button>')+'</div>';
   }).join('')+'</section>';
 }
+function watcherCard(){
+  if(!NATIVE)return '';
+  var w={ago:-1};try{w=JSON.parse(window.KaavalNative.watcherStatus())}catch(e){}
+  var ok=w.ago>=0&&w.ago<90;
+  var msg=w.ago<0?'Not started yet. Keep Data Kaaval allowed in the background.':ok?('Running. Last check '+w.ago+' s ago.'):('Stopped. Last check '+Math.max(1,Math.round(w.ago/60))+' min ago. Your phone stopped it, see the steps below.');
+  return '<section class="card"><h2>Limit popup on other apps</h2>'+
+   '<div class="lrow"><div class="grow"><b>'+(ok?'Watcher running':'Watcher not running')+'</b><div class="sub">'+msg+'</div></div><span class="pill" style="'+(ok?'':'background:color-mix(in srgb,var(--over) 18%,transparent);color:var(--over)')+'">'+(ok?'ON':'OFF')+'</span></div>'+
+   '<div class="actions" style="margin-top:12px"><button class="btn pri" data-act="native-test">Test popup (6 sec)</button><button class="btn" data-act="native-autostart">Autostart</button><button class="btn" data-act="native-appperm">App permissions</button></div>'+
+   '<p class="sub" style="margin-top:12px">For the popup to appear exactly when the limit is reached: (1) Show over other apps = Allowed, (2) Autostart = ON, (3) Battery = No restrictions, (4) in Recent apps, long-press the Data Kaaval card and tap Lock. On Xiaomi, also allow Display pop-up windows while running in the background under App permissions.</p></section>';
+}
 function settingsView(){
   var u=S.ui;
   function segd(act,key,opts,cur){return '<div class="seg">'+opts.map(function(o){return '<button data-act="'+act+'" data-v="'+o[0]+'" class="'+(String(cur)===String(o[0])?'on':'')+'">'+o[1]+'</button>'}).join('')+'</div>'}
-  return permsStatusCard()+
+  return permsStatusCard()+watcherCard()+
   '<section class="card"><h2>Theme and language</h2>'+segd('theme','theme',[['auto','Auto'],['light','Light'],['dark','Dark']],u.theme)+
     '<div style="height:12px"></div>'+segd('lang','lang',[['en','English'],['ta','தமிழ்']],u.lang)+'</section>'+
   '<section class="card"><h2>Battery</h2>'+sw('save','Battery saver (turns off all animation and the live demo)',u.save)+
@@ -823,7 +856,7 @@ function openSheet(pre){
    '<div class="actions"><button class="btn" data-act="sheet-close">Cancel</button><button class="btn pri" data-act="log-save">Add to today</button></div></div></div>';
   s.hidden=false;setTimeout(function(){var i=$('#logAmt');if(i)i.focus()},50);
 }
-function closeSheet(){var s=$('#sheet');s.hidden=true;s.innerHTML=''}
+function closeSheet(){var s=$('#sheet');s.hidden=true;s.innerHTML='';if(pk){pk=null;save();render(false)}}
 
 /* ---------- events ---------- */
 function armed(btn,fn,label){
@@ -837,7 +870,7 @@ document.addEventListener('click',function(e){
   var a=b.dataset.act,d=b.dataset;
   if(a==='sheet-bg'){if(e.target===b)closeSheet();return}
   switch(a){
-   case 'tab':go(d.v);break;
+   case 'tab':go(d.v);if(NATIVE){try{window.KaavalNative.maybeShowAd()}catch(x){}}break;
    case 'cmode':chartMode=d.m;render(false);break;
    case 'bar':bar30=bar30===d.k?null:d.k;render(false);break;
    case 'cprev':cal.m--;if(cal.m<0){cal.m=11;cal.y--}render(false);break;
@@ -856,7 +889,16 @@ document.addEventListener('click',function(e){
      var lRaw=parseFloat(lInp?lInp.value:''),lMul=(lUn&&lUn.value==='GB')?1024:1;
      applyLimit(d.id,lRaw>0?lRaw*lMul:0);break;
    case 'clearlim':applyLimit(d.id,0);break;
-   case 'limmode':S.limMode=d.v;save();render(false);break;
+   case 'alertstyle':S.alertStyle=d.v;save();render(false);break;
+   case 'pick':openPicker(d.t);break;
+   case 'pk-cancel':if(pk){S.ui=JSON.parse(pk.snap);apply()}pk=null;save();closeSheet();render(false);break;
+   case 'pk-done':closeSheet();break;
+   case 'pk-auto':pkSet(pk.t,null);apply();save();closeSheet();render(false);break;
+   case 'pk-quick':pk.hex=d.c;var q=hex2hsv(d.c);pk.h=q.h;pk.s=q.s;pk.v=q.v;pkSet(pk.t,d.c);apply();save();pkPaint(true);break;
+   case 'colors-reset':armed(b,function(){var u0=S.ui;u0.bg=null;u0.accent=null;u0.fg=null;u0.card=null;u0.okc=null;u0.warnc=null;u0.overc=null;apply();save();render(false);toast('Colours reset')},'Tap again to confirm');break;
+   case 'native-test':try{window.KaavalNative.testPopup()}catch(x){}toast('Popup comes in 6 seconds. Switch to another app now.');break;
+   case 'native-autostart':try{window.KaavalNative.openAutostart()}catch(x){}break;
+   case 'native-appperm':try{window.KaavalNative.openAppPermissions()}catch(x){}break;
    case 'bg':
      S.ui.bg=d.c1?(d.c2?{t:'grad',c1:d.c1,c2:d.c2}:{t:'solid',c1:d.c1}):null;
      apply();save();render(false);break;
@@ -884,7 +926,8 @@ document.addEventListener('click',function(e){
            else Notification.requestPermission().then(function(p){if(p!=='granted')toast('Notifications blocked. Full-screen popups still work.')}).catch(function(){});
          }catch(x){toast('Phone notifications are not available here. Popups still work.')}
        }
-     }else S[k]=!S[k];
+     }else if(k==='petSound'){S.petSound=!(S.petSound!==false);save()}
+     else S[k]=!S[k];
      save();render(false);break;
    case 'delapp':
      armed(b,function(){S.apps=S.apps.filter(function(x){return x.id!==d.id});save();render(false)},'Sure?');break;
@@ -922,17 +965,15 @@ document.addEventListener('input',function(e){
   var k=el.dataset&&el.dataset.in;if(!k)return;
   if(k==='warn'){S.warn=+el.value;$('#warnV').textContent=S.warn+'%';S.alerts={};save()}
   else if(k==='scale'){S.ui.scale=+el.value;$('#scaleV').textContent=Math.round(S.ui.scale*100)+'%';apply();save()}
-  else if(k==='acccustom'){S.ui.accent=el.value;apply();save()}
-  else if(k==='fgcustom'){S.ui.fg=el.value;apply();save()}
-  else if(k==='bgsolid'){S.ui.bg={t:'solid',c1:el.value};apply();save()}
-  else if(k==='bggrad'){S.ui.bg={t:'grad',c1:$('#bgG1').value,c2:$('#bgG2').value};apply();save()}
+  else if(k==='pk'&&pk){pk.h=+$('#pkH').value;pk.s=+$('#pkS').value;pk.v=+$('#pkV').value;pk.hex=hsv2hex(pk.h,pk.s,pk.v);pkSet(pk.t,pk.hex);apply();save();pkPaint(false)}
+  else if(k==='pkhex'&&pk){var nh=normHex(el.value);if(nh){var q2=hex2hsv(nh);pk.h=q2.h;pk.s=q2.s;pk.v=q2.v;pk.hex=nh;pkSet(pk.t,nh);apply();save();pkPaint(true,true)}}
 });
 document.addEventListener('change',function(e){
   var el=e.target,k=el.dataset&&el.dataset.in;if(!k)return;
   if(k==='planval'||k==='planunit'){
     planUnit=$('#planUnit').value;var pv=parseFloat($('#planVal').value);
     if(pv>0){S.plan=Math.round(pv*(planUnit==='GB'?1024:1));S.alerts={};save();render(false);toast('Daily plan: '+fs(S.plan))}
-  }else if(k==='acccustom'||k==='fgcustom'||k==='bgsolid'||k==='bggrad')render(false);
+  }
 });
 document.addEventListener('keydown',function(e){
   if(e.key!=='Enter')return;
@@ -950,6 +991,55 @@ document.addEventListener('keydown',function(e){
   if(e.key==='Escape'&&!$('#sheet').hidden)closeSheet();
 });
 
+
+/* ---------- colour picker (Android WebView has no built-in colour dialog) ---------- */
+var pk=null;
+function normHex(h){h=String(h||'').trim().replace(/^#/,'');if(/^[0-9a-f]{3}$/i.test(h))h=h.split('').map(function(c){return c+c}).join('');return /^[0-9a-f]{6}$/i.test(h)?('#'+h).toUpperCase():null}
+function hex2hsv(hex){var h=normHex(hex)||'#000000',r=parseInt(h.substr(1,2),16)/255,g=parseInt(h.substr(3,2),16)/255,b=parseInt(h.substr(5,2),16)/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn,H=0;
+  if(d){if(mx===r)H=((g-b)/d)%6;else if(mx===g)H=(b-r)/d+2;else H=(r-g)/d+4;H*=60;if(H<0)H+=360}
+  return {h:Math.round(H),s:Math.round(mx?d/mx*100:0),v:Math.round(mx*100)}}
+function hsv2hex(h,s,v){s/=100;v/=100;var c=v*s,x=c*(1-Math.abs((h/60)%2-1)),m=v-c,r=0,g=0,b=0;
+  if(h<60){r=c;g=x}else if(h<120){r=x;g=c}else if(h<180){g=c;b=x}else if(h<240){g=x;b=c}else if(h<300){r=x;b=c}else{r=c;b=x}
+  var f=function(n){return Math.round((n+m)*255).toString(16).padStart(2,'0')};return ('#'+f(r)+f(g)+f(b)).toUpperCase()}
+var PK_LABEL={bg1:'Background',bg2:'Gradient end',card:'Cards and boxes',fg:'Text',accent:'Buttons and accent',okc:'Normal (ring)',warnc:'Warning',overc:'Limit reached'};
+function cssHex(v,fb){return normHex(getComputedStyle(document.documentElement).getPropertyValue(v))||fb}
+function pkGet(t){var u=S.ui;
+  if(t==='accent')return normHex(u.accent)||cssHex('--accent','#2F7BFF');
+  if(t==='fg')return normHex(u.fg)||cssHex('--fg','#F4F7FF');
+  if(t==='bg1')return u.bg?u.bg.c1:cssHex('--bg','#0A0F1C');
+  if(t==='bg2')return u.bg&&u.bg.t==='grad'?u.bg.c2:'#26D0CE';
+  if(t==='card')return normHex(u.card)||'#1B2539';
+  if(t==='okc')return normHex(u.okc)||cssHex('--ok','#2DD4A7');
+  if(t==='warnc')return normHex(u.warnc)||cssHex('--warn','#FBBF24');
+  return normHex(u.overc)||cssHex('--over','#FF5D6C')}
+function pkSet(t,hex){var u=S.ui;
+  if(t==='accent')u.accent=hex;else if(t==='fg')u.fg=hex;else if(t==='card')u.card=hex;
+  else if(t==='okc')u.okc=hex;else if(t==='warnc')u.warnc=hex;else if(t==='overc')u.overc=hex;
+  else if(t==='bg1'){if(!hex)u.bg=null;else if(u.bg&&u.bg.t==='grad')u.bg.c1=hex;else u.bg={t:'solid',c1:hex}}
+  else if(t==='bg2'){if(!hex){if(u.bg&&u.bg.t==='grad')u.bg={t:'solid',c1:u.bg.c1}}else u.bg={t:'grad',c1:u.bg?u.bg.c1:'#1A2980',c2:hex}}}
+function pkPaint(sliders,skipHex){
+  var h=pk.h,s=pk.s,v=pk.v,hex=hsv2hex(h,s,v);
+  $('#pkS').style.background='linear-gradient(90deg,'+hsv2hex(h,0,v)+','+hsv2hex(h,100,v)+')';
+  $('#pkV').style.background='linear-gradient(90deg,#000,'+hsv2hex(h,s,100)+')';
+  $('#pkPrev').style.background=hex;
+  if(!skipHex)$('#pkHex').value=hex;
+  if(sliders){$('#pkH').value=h;$('#pkS').value=s;$('#pkV').value=v}
+}
+function openPicker(t){
+  var cur=pkGet(t),q=hex2hsv(cur);
+  pk={t:t,h:q.h,s:q.s,v:q.v,hex:cur,snap:JSON.stringify(S.ui)};
+  var quick=['#FFFFFF','#000000','#FF3B30','#FF9500','#FFD60A','#34C759','#00C7BE','#0A84FF','#5E5CE6','#BF5AF2','#FF2D92','#8E8E93'];
+  var s=$('#sheet');
+  s.innerHTML='<div class="sheet-bg" data-act="sheet-bg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh">'+
+   '<h2 id="sh">'+PK_LABEL[t]+'</h2><div class="pkprev" id="pkPrev"></div>'+
+   '<div class="lbl">Colour</div><input class="pkr" id="pkH" type="range" min="0" max="360" step="1" value="'+q.h+'" data-in="pk" style="background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)">'+
+   '<div class="lbl">Softness</div><input class="pkr" id="pkS" type="range" min="0" max="100" step="1" value="'+q.s+'" data-in="pk">'+
+   '<div class="lbl">Brightness</div><input class="pkr" id="pkV" type="range" min="0" max="100" step="1" value="'+q.v+'" data-in="pk">'+
+   '<div class="lbl">Quick colours</div><div class="pkq">'+quick.map(function(c){return '<button class="sw" style="--c:'+c+'" data-act="pk-quick" data-c="'+c+'" aria-label="'+c+'"></button>'}).join('')+'</div>'+
+   '<div class="field"><label for="pkHex">Colour code</label><input id="pkHex" type="text" maxlength="7" autocapitalize="characters" value="'+cur+'" data-in="pkhex"></div>'+
+   '<div class="actions"><button class="btn" data-act="pk-cancel">Cancel</button><button class="btn" data-act="pk-auto">Default</button><button class="btn pri" data-act="pk-done">Done</button></div></div></div>';
+  s.hidden=false;pkPaint(false);
+}
 
 /* ---------- native (Android) bridge ---------- */
 var NATIVE=!!window.KaavalNative;
@@ -973,7 +1063,7 @@ function pushConfig(){
   try{
     var lim={},names={};
     S.apps.forEach(function(a){names[a.id]=a.name;var L=effLimit(a);if(L)lim[a.id]=L});
-    window.KaavalNative.setConfig(JSON.stringify({plan:S.plan,warn:S.warn,popup:S.popup,notify:S.notify,wifi:S.wifi!==false,lang:S.ui.lang,limits:lim,names:names}));
+    window.KaavalNative.setConfig(JSON.stringify({plan:S.plan,warn:S.warn,popup:S.popup,notify:S.notify,wifi:S.wifi!==false,lang:S.ui.lang,style:S.alertStyle||'pet',petSound:S.petSound!==false,limits:lim,names:names}));
   }catch(e){}
 }
 function syncNative(){
@@ -1024,7 +1114,7 @@ window.onNativeWarn=function(msg,over){toast(msg,over?'over':'warn')};
 /* ---------- boot ---------- */
 var curKey=todayKey();
 S=load();
-if(!S.oneoff)S.oneoff={};if(!S.limMode)S.limMode='more';
+if(!S.oneoff)S.oneoff={};S.limMode='more';
 if(NATIVE&&S.sample){S.sample=false;S.days={};S.apps=S.apps.filter(function(a){return a.hotspot}).map(function(a){a.limit=null;return a})}
 apply();
 render(true);

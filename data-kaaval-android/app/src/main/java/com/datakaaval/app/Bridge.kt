@@ -43,6 +43,82 @@ class Bridge(private val activity: Activity) {
     }
 
     @JavascriptInterface
+    fun openAppPermissions() {
+        activity.runOnUiThread {
+            val pkg = activity.packageName
+            val tries = listOf(
+                Intent("miui.intent.action.APP_PERM_EDITOR").setClassName(
+                    "com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity"
+                ).putExtra("extra_pkgname", pkg),
+                Intent("miui.intent.action.APP_PERM_EDITOR").putExtra("extra_pkgname", pkg),
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$pkg"))
+            )
+            for (i in tries) {
+                try {
+                    activity.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    return@runOnUiThread
+                } catch (e: Exception) {
+                    // try the next screen
+                }
+            }
+        }
+    }
+
+    @JavascriptInterface
+    fun openAutostart() {
+        activity.runOnUiThread {
+            val tries = listOf(
+                Intent().setClassName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity"),
+                Intent().setClassName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity"),
+                Intent().setClassName("com.oppo.safe", "com.oppo.safe.permission.startup.StartupAppListActivity"),
+                Intent().setClassName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"),
+                Intent().setClassName("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity"),
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + activity.packageName))
+            )
+            for (i in tries) {
+                try {
+                    activity.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    return@runOnUiThread
+                } catch (e: Exception) {
+                    // try the next screen
+                }
+            }
+        }
+    }
+
+    @JavascriptInterface
+    fun testPopup() {
+        thread {
+            try {
+                Thread.sleep(6000)
+                AlertChecker.test(activity.applicationContext)
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
+    }
+
+    /** JSON: seconds since the background watcher last ran (-1 = never) and the app it saw in front. */
+    @JavascriptInterface
+    fun watcherStatus(): String {
+        val d = activity.getSharedPreferences("diag", Context.MODE_PRIVATE)
+        val hb = d.getLong("hb", 0L)
+        val ago = if (hb == 0L) -1L else (System.currentTimeMillis() - hb) / 1000
+        return JSONObject().put("ago", ago).put("fg", d.getString("fg", "")).put("err", d.getString("err", "")).toString()
+    }
+
+    @JavascriptInterface
+    fun maybeShowAd() {
+        activity.runOnUiThread {
+            try {
+                AdGate.maybeShow(activity)
+            } catch (e: Exception) {
+                // ads are optional
+            }
+        }
+    }
+
+    @JavascriptInterface
     fun hasBatteryExempt(): Boolean {
         val pm = activity.getSystemService(Context.POWER_SERVICE) as PowerManager
         return pm.isIgnoringBatteryOptimizations(activity.packageName)
@@ -90,8 +166,11 @@ class Bridge(private val activity: Activity) {
         activity.runOnUiThread {
             try {
                 val w = activity.window
-                w.statusBarColor = Color.parseColor(top)
-                w.navigationBarColor = Color.parseColor(bottom)
+                val topC = Color.parseColor(top)
+                val botC = Color.parseColor(bottom)
+                w.statusBarColor = topC
+                w.navigationBarColor = botC
+                (activity as? MainActivity)?.setChrome(topC, botC)
                 if (Build.VERSION.SDK_INT >= 30) {
                     val mask = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
                         WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS

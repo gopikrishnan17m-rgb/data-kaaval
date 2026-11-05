@@ -18,14 +18,16 @@ object AlertChecker {
     private fun fmt(mb: Double): String =
         if (mb >= 1024) String.format(Locale.US, "%.2f GB", mb / 1024) else "${Math.round(mb)} MB"
 
+    /** Returns true while at least one limit is still waiting to be reached (so the watcher should poll fast). */
     @Synchronized
-    fun check(ctx: Context) {
-        val raw = ctx.getSharedPreferences("cfg", Context.MODE_PRIVATE).getString("json", null) ?: return
-        if (!UsageReader.hasAccess(ctx)) return
+    fun check(ctx: Context): Boolean {
+        var pending = false
+        val raw = ctx.getSharedPreferences("cfg", Context.MODE_PRIVATE).getString("json", null) ?: return false
+        if (!UsageReader.hasAccess(ctx)) return false
         val cfg = JSONObject(raw)
         val plan = cfg.optDouble("plan", 0.0)
         val limits = cfg.optJSONObject("limits") ?: JSONObject()
-        if (plan <= 0 && limits.length() == 0) return
+        if (plan <= 0 && limits.length() == 0) return false
 
         val warn = cfg.optDouble("warn", 80.0) / 100.0
         val popup = cfg.optBoolean("popup", true)
@@ -54,12 +56,13 @@ object AlertChecker {
             val name = if (id == "hs") (if (ta) "மொபைல் ஹாட்ஸ்பாட்" else "Mobile hotspot") else names.optString(id, id)
             val tag = "${id}@${lim.toInt()}"
             val pct = Math.round(used / lim * 100).toInt()
+            if (used < lim) pending = true
             if (used >= lim) {
                 once("w$tag")
                 if (once("o$tag")) {
                     val title = if (ta) "$name — வரம்பு எட்டியது" else "$name limit reached"
                     val body = if (ta) "இன்றைய வரம்பை எட்டிவிட்டீர்கள்" else "You reached today's limit"
-                    alert(ctx, title, body, "${fmt(used)} / ${fmt(lim)}", pct, true, popup, notifyOn, tag.hashCode(), ta)
+                    alert(ctx, title, body, "${fmt(used)} / ${fmt(lim)}", pct, true, popup, notifyOn, tag.hashCode(), ta, name)
                 }
             } else if (used >= lim * warn) {
                 if (once("w$tag")) {
@@ -73,12 +76,13 @@ object AlertChecker {
             val total = today.values.sum()
             val tag = "plan@${plan.toInt()}"
             val pct = Math.round(total / plan * 100).toInt()
+            if (total < plan) pending = true
             if (total >= plan) {
                 once("w$tag")
                 if (once("o$tag")) {
                     val title = if (ta) "தினசரி வரம்பு எட்டியது" else "Daily data limit reached"
                     val body = if (ta) "இன்றைய டேட்டா திட்டம் முழுவதும் தீர்ந்தது" else "You used your whole daily data plan"
-                    alert(ctx, title, body, "${fmt(total)} / ${fmt(plan)}", pct, true, popup, notifyOn, tag.hashCode(), ta)
+                    alert(ctx, title, body, "${fmt(total)} / ${fmt(plan)}", pct, true, popup, notifyOn, tag.hashCode(), ta, if (ta) "தினசரி டேட்டா" else "Daily data")
                 }
             } else if (total >= plan * warn) {
                 if (once("w$tag")) {
@@ -88,15 +92,42 @@ object AlertChecker {
                 }
             }
         }
+        return pending
+    }
+
+    /** Used by the "Test popup" button so the person can check the popup works over other apps. */
+    fun test(ctx: Context) {
+        val ta = try {
+            JSONObject(ctx.getSharedPreferences("cfg", Context.MODE_PRIVATE).getString("json", "{}") ?: "{}")
+                .optString("lang", "en") == "ta"
+        } catch (e: Exception) { false }
+        alert(
+            ctx,
+            if (ta) "YouTube — வரம்பு எட்டியது" else "YouTube limit reached",
+            if (ta) "இன்றைய வரம்பை எட்டிவிட்டீர்கள்" else "You reached today's limit",
+            "12 MB / 10 MB", 120, true, true, false, 4242, ta, "YouTube"
+        )
     }
 
     private fun alert(
         ctx: Context, title: String, body: String, nums: String, pct: Int,
-        over: Boolean, popup: Boolean, notifyOn: Boolean, id: Int, ta: Boolean
+        over: Boolean, popup: Boolean, notifyOn: Boolean, id: Int, ta: Boolean, name: String = title
     ) {
         if (OverlayManager.canDraw(ctx)) {
-            if (over && popup) OverlayManager.showLimit(ctx, title, body, nums, pct, ta)
-            else OverlayManager.showBanner(ctx, title, "$body · $nums")
+            if (over && popup) {
+                val cfg = try {
+                    JSONObject(ctx.getSharedPreferences("cfg", Context.MODE_PRIVATE).getString("json", "{}") ?: "{}")
+                } catch (e: Exception) { JSONObject() }
+                val style = cfg.optString("style", "pet")
+                val sound = cfg.optBoolean("petSound", true)
+                when (style) {
+                    "full" -> OverlayManager.showLimit(ctx, title, body, nums, pct, ta)
+                    "both" -> PetOverlay.show(ctx, name, nums, pct, ta, sound) {
+                        OverlayManager.showLimit(ctx, title, body, nums, pct, ta)
+                    }
+                    else -> PetOverlay.show(ctx, name, nums, pct, ta, sound) { }
+                }
+            } else OverlayManager.showBanner(ctx, title, "$body · $nums")
             if (notifyOn) notifyPlain(ctx, title, body, nums, id)
             return
         }
