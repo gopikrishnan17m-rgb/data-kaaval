@@ -11,8 +11,8 @@ android {
         applicationId "com.datakaaval.app"
         minSdk 29
         targetSdk 36
-        versionCode 6
-        versionName "1.5"
+        versionCode 12
+        versionName "2.1"
 
         // AdMob. These are Google's TEST ids. Put your own ids in gradle.properties before publishing.
         def adApp = (project.findProperty('ADMOB_APP_ID') ?: 'ca-app-pub-3940256099942544~3347511713').toString()

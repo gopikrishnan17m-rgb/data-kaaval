@@ -98,7 +98,6 @@ class MonitorService : Service() {
         } else {
             startForeground(1, n)
         }
-        PetOverlay.prewarm(this)
         thread = HandlerThread("kaaval-monitor").also { it.start() }
         handler = Handler(thread!!.looper)
         handler?.post(tick)

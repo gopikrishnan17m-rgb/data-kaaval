@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Kaaval mascot</title>
+<style>
+html,body{margin:0;height:100%;background:transparent;overflow:hidden;-webkit-user-select:none;user-select:none;
+  font-family:system-ui,-apple-system,"Noto Sans Tamil","Noto Sans",Roboto,Arial,sans-serif}
+#stage{position:fixed;inset:0;pointer-events:none;overflow:hidden;visibility:hidden}
+#aura{position:absolute;left:-30px;bottom:12px;width:260px;height:260px;border-radius:50%;opacity:0;
+  background:radial-gradient(closest-side,rgba(255,93,108,.62),rgba(255,140,80,.22) 60%,rgba(255,93,108,0) 100%)}
+#fox{position:absolute;left:8px;bottom:40px;width:190px;height:215px;transform-origin:50% 96%;will-change:transform;visibility:hidden;
+  filter:drop-shadow(0 0 12px rgba(255,150,60,.5)) drop-shadow(0 6px 8px rgba(0,0,0,.35))}
+#foxsvg{width:100%;height:100%;display:block}
+#bubble{position:absolute;left:50%;bottom:262px;height:150px;opacity:0;transform-origin:30% 100%;
+  box-sizing:border-box;padding:16px 18px;border-radius:24px;border:2px solid #FF5D6C;color:#fff;
+  background:linear-gradient(160deg,rgba(24,36,64,.97),rgba(10,16,34,.97));
+  box-shadow:0 0 34px rgba(255,93,108,.55),inset 0 0 22px rgba(255,93,108,.16)}
+#bubble:after{content:"";position:absolute;bottom:-13px;left:var(--tail,70px);width:22px;height:22px;transform:rotate(45deg);
+  background:#0B1226;border-right:2px solid #FF5D6C;border-bottom:2px solid #FF5D6C;border-radius:0 0 6px 0}
+#excl{position:absolute;left:-12px;top:-14px;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FF9AA4,#FF3D55);color:#fff;font-weight:900;font-size:22px;line-height:34px;text-align:center;box-shadow:0 0 16px rgba(255,61,85,.8);animation:ex .7s ease-in-out infinite alternate}
+@keyframes ex{from{transform:scale(1) rotate(-8deg)}to{transform:scale(1.18) rotate(8deg)}}
+#btitle{font-weight:800;font-size:20px;line-height:1.25;min-height:26px}
+#bnums{margin-top:6px;font-weight:800;font-size:17px;color:#FF8A95}
+</style></head><body>
+<div id="stage">
+ <div id="aura"></div>
+ <div id="fox"><svg id="foxsvg" viewBox="0 0 300 340" xmlns="http://www.w3.org/2000/svg" overflow="visible">
+ <defs>
+  <radialGradient id="gBody" cx="38%" cy="28%" r="80%"><stop offset="0" stop-color="#FFC27A"/><stop offset=".45" stop-color="#FF9A3C"/><stop offset="1" stop-color="#E2631A"/></radialGradient>
+  <radialGradient id="gHead" cx="36%" cy="26%" r="85%"><stop offset="0" stop-color="#FFCB85"/><stop offset=".5" stop-color="#FF9F42"/><stop offset="1" stop-color="#E5671C"/></radialGradient>
+  <radialGradient id="gCream" cx="40%" cy="25%" r="85%"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".6" stop-color="#FFF1DC"/><stop offset="1" stop-color="#F6D7B0"/></radialGradient>
+  <radialGradient id="gScarf" cx="35%" cy="25%" r="90%"><stop offset="0" stop-color="#6FB0FF"/><stop offset=".6" stop-color="#2F6BFF"/><stop offset="1" stop-color="#1E3FBF"/></radialGradient>
+  <radialGradient id="gEye" cx="38%" cy="30%" r="80%"><stop offset="0" stop-color="#4A2A6B"/><stop offset="1" stop-color="#1B0E33"/></radialGradient>
+  <radialGradient id="gSock" cx="40%" cy="30%" r="80%"><stop offset="0" stop-color="#8A4A2C"/><stop offset="1" stop-color="#4A2314"/></radialGradient>
+  <linearGradient id="gTail" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#E2631A"/><stop offset=".7" stop-color="#FF9F42"/><stop offset="1" stop-color="#FFC27A"/></linearGradient>
+  <clipPath id="clipEyeL"><ellipse cx="110" cy="122" rx="23" ry="27"/></clipPath>
+  <clipPath id="clipEyeR"><ellipse cx="190" cy="122" rx="23" ry="27"/></clipPath>
+  <clipPath id="clipMouth"><path id="mouthClip" d=""/></clipPath>
+ </defs>
+ <ellipse id="shadow" cx="150" cy="328" rx="82" ry="10" fill="rgba(0,0,0,.30)"/>
+ <g id="tail"><path d="M200 288 C 272 300 306 236 280 170 C 270 142 242 138 234 164 C 250 196 238 240 192 254 Z" fill="url(#gTail)"/>
+  <path d="M280 170 C 270 142 242 138 234 164 C 246 166 266 174 280 170 Z" fill="url(#gCream)"/></g>
+ <path id="body" d="M150 176 C 94 176 68 226 70 266 C 72 308 110 326 150 326 C 190 326 228 308 230 266 C 232 226 206 176 150 176 Z" fill="url(#gBody)"/>
+ <ellipse cx="150" cy="272" rx="42" ry="48" fill="url(#gCream)"/>
+ <ellipse cx="108" cy="320" rx="28" ry="14" fill="url(#gSock)"/><ellipse cx="192" cy="320" rx="28" ry="14" fill="url(#gSock)"/>
+ <g id="armL"><ellipse cx="82" cy="256" rx="16" ry="32" fill="url(#gBody)" transform="rotate(8 82 256)"/><circle cx="78" cy="284" r="12" fill="url(#gSock)"/></g>
+ <g id="scarf"><path d="M90 192 Q150 222 210 192 L 214 216 Q150 250 86 216 Z" fill="url(#gScarf)"/>
+  <path d="M190 214 L 214 252 L 192 248 L 180 222 Z" fill="url(#gScarf)"/>
+  <g id="bars" fill="#CFF3FF"><rect x="132" y="214" width="7" height="9" rx="2"/><rect x="143" y="210" width="7" height="13" rx="2"/><rect x="154" y="206" width="7" height="17" rx="2"/></g></g>
+ <g id="head">
+  <g id="earL"><path d="M72 98 C 50 56 54 20 82 16 C 106 14 126 50 132 80 Z" fill="url(#gHead)"/><path d="M84 82 C 72 54 74 36 86 33 C 98 32 110 54 114 74 Z" fill="#FF8FA3"/><path d="M84 82 C 72 54 74 36 86 33 C 98 32 110 54 114 74 Z" fill="#7A2A3E" opacity=".25" transform="translate(4 4) scale(.9)"/></g>
+  <g id="earR"><path d="M228 98 C 250 56 246 20 218 16 C 194 14 174 50 168 80 Z" fill="url(#gHead)"/><path d="M216 82 C 228 54 226 36 214 33 C 202 32 190 54 186 74 Z" fill="#FF8FA3"/></g>
+  <path d="M150 60 C 84 58 40 94 42 136 C 44 170 90 194 150 194 C 210 194 256 170 258 136 C 260 94 216 58 150 60 Z" fill="url(#gHead)"/>
+  <path d="M44 132 L 22 144 L 46 152 L 30 170 L 66 166 Z" fill="url(#gHead)"/><path d="M256 132 L 278 144 L 254 152 L 270 170 L 234 166 Z" fill="url(#gHead)"/>
+  <path d="M68 142 C 68 118 110 112 150 128 C 190 112 232 118 232 142 C 232 174 196 194 150 194 C 104 194 68 174 68 142 Z" fill="url(#gCream)"/>
+  <ellipse cx="108" cy="80" rx="36" ry="13" fill="#fff" opacity=".28" transform="rotate(-18 108 80)"/>
+  <ellipse cx="82" cy="156" rx="15" ry="9" fill="#FF7A93" opacity=".42"/><ellipse cx="218" cy="156" rx="15" ry="9" fill="#FF7A93" opacity=".42"/>
+  <g id="eyeL"><ellipse cx="110" cy="122" rx="23" ry="27" fill="#fff"/>
+   <g clip-path="url(#clipEyeL)"><g id="pupL"><ellipse cx="110" cy="124" rx="15" ry="20" fill="url(#gEye)"/><circle cx="105" cy="114" r="6.5" fill="#fff"/><circle cx="117" cy="130" r="3" fill="#fff" opacity=".9"/></g>
+    <rect id="lidL" x="80" y="90" width="60" height="0" fill="#FF9A3C"/></g>
+   <ellipse cx="110" cy="122" rx="23" ry="27" fill="none" stroke="#7A3A1C" stroke-width="2.4" opacity=".55"/></g>
+  <g id="eyeR"><ellipse cx="190" cy="122" rx="23" ry="27" fill="#fff"/>
+   <g clip-path="url(#clipEyeR)"><g id="pupR"><ellipse cx="190" cy="124" rx="15" ry="20" fill="url(#gEye)"/><circle cx="185" cy="114" r="6.5" fill="#fff"/><circle cx="197" cy="130" r="3" fill="#fff" opacity=".9"/></g>
+    <rect id="lidR" x="160" y="90" width="60" height="0" fill="#FF9A3C"/></g>
+   <ellipse cx="190" cy="122" rx="23" ry="27" fill="none" stroke="#7A3A1C" stroke-width="2.4" opacity=".55"/></g>
+  <path id="browL" d="M88 84 Q110 74 132 84" fill="none" stroke="#6B3418" stroke-width="8" stroke-linecap="round"/>
+  <path id="browR" d="M168 84 Q190 74 212 84" fill="none" stroke="#6B3418" stroke-width="8" stroke-linecap="round"/>
+  <path d="M141 145 Q150 139 159 145 Q158 154 150 156 Q142 154 141 145 Z" fill="#3A2250"/><ellipse cx="146" cy="145" rx="3" ry="1.8" fill="#fff" opacity=".6"/>
+  <path id="mouthFill" d="" fill="#4A1830"/><g clip-path="url(#clipMouth)"><ellipse id="tongue" cx="150" cy="176" rx="14" ry="9" fill="#FF7C93"/></g>
+  <path id="mouthLine" d="" fill="none" stroke="#4A1830" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+ </g>
+ <g id="armR"><ellipse cx="218" cy="256" rx="16" ry="32" fill="url(#gBody)" transform="rotate(-8 218 256)"/><circle cx="222" cy="284" r="12" fill="url(#gSock)"/></g>
+
+ <g id="paws" opacity="0">
+  <g transform="translate(60 176) rotate(-8)"><path d="M-23 9 C-25 -8 -14 -17 0 -17 C14 -17 25 -8 23 9 C21 18 -21 18 -23 9 Z" fill="url(#gBody)" stroke="#C9540F" stroke-width="2" stroke-opacity=".5"/>
+   <path d="M-8 -16 L-8 -3 M8 -16 L8 -3" stroke="#C9540F" stroke-width="2.4" stroke-linecap="round" opacity=".55"/><ellipse cx="-6" cy="-9" rx="9" ry="4" fill="#fff" opacity=".22"/></g>
+  <g transform="translate(240 176) rotate(8)"><path d="M-23 9 C-25 -8 -14 -17 0 -17 C14 -17 25 -8 23 9 C21 18 -21 18 -23 9 Z" fill="url(#gBody)" stroke="#C9540F" stroke-width="2" stroke-opacity=".5"/>
+   <path d="M-8 -16 L-8 -3 M8 -16 L8 -3" stroke="#C9540F" stroke-width="2.4" stroke-linecap="round" opacity=".55"/><ellipse cx="-6" cy="-9" rx="9" ry="4" fill="#fff" opacity=".22"/></g>
+ </g>
+</svg></div>
+ <div id="bubble"><div id="excl">!</div><div id="btitle"></div><div id="bnums"></div></div>
+</div>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s)};
+function native(fn,a){try{if(window.KaavalPet&&window.KaavalPet[fn])window.KaavalPet[fn](a===undefined?'':a)}catch(e){}}
+var lerp=function(a,b,p){return a+(b-a)*p}, cl=function(v,a,b){return v<a?a:v>b?b:v};
+var eo=function(p){return 1-(1-p)*(1-p)}, ei=function(p){return p*p};
+var eoBack=function(p){var c1=1.5,c3=c1+1;return 1+c3*Math.pow(p-1,3)+c1*Math.pow(p-1,2)};
+var el={};['tail','armL','armR','earL','earR','pupL','pupR','lidL','lidR','browL','browR','mouthFill','mouthLine','mouthClip','tongue','head','bars','paws'].forEach(function(id){el[id]=document.getElementById(id)});
+var fox=$('#fox'),aura=$('#aura'),bubble=$('#bubble'),btitle=$('#btitle'),bnums=$('#bnums'),stage=$('#stage');
+var C={name:'App',nums:'',pct:100,ta:false,sound:true,title:''};
+var running=false,t0=0,speaking=false,leaving=false,leaveT=0,arrived=false,sfx={},raf=0,closedSent=false;
+var FW=190,HX=-215,HY=30,IN=520,EMERGE_MS=800;
+var SCH=[],EMERGE=0,ARRIVE=0;
+function bw(){return Math.min(window.innerWidth-24,360)}
+
+/* schedule: peek, 5 s gap, peek, 5 s gap, peek 2 s then come fully out (or only the last one in quick mode) */
+function plan(quick){
+  if(quick)SCH=[{k:'C',s:0,hold:1100,out:0,tx:-60,ty:18,rot:8}];
+  else SCH=[{k:'A',s:0,hold:3000,out:480,tx:-80,ty:34,rot:13},{k:'C',s:8000,hold:2000,out:0,tx:-42,ty:14,rot:7}];
+  var c=SCH[SCH.length-1];EMERGE=c.s+IN+c.hold;ARRIVE=EMERGE+EMERGE_MS;
+}
+
+/* ---------- face ---------- */
+function face(f){
+  el.lidL.setAttribute('height',Math.min(54,(f.lidL||0)*54));
+  el.lidR.setAttribute('height',Math.min(54,(f.lidR||0)*54));
+  var px=(f.pupX||0)*7,py=(f.pupY||0)*6,sc=f.pupS||1;
+  el.pupL.setAttribute('transform','translate('+px+' '+py+') translate(110 124) scale('+sc+') translate(-110 -124)');
+  el.pupR.setAttribute('transform','translate('+px+' '+py+') translate(190 124) scale('+sc+') translate(-190 -124)');
+  var by=f.browY||0,tl=f.tilt||0;
+  el.browL.setAttribute('transform','translate(0 '+(by+(f.browLy||0))+') rotate('+(-tl+(f.rotL||0))+' 110 80)');
+  el.browR.setAttribute('transform','translate(0 '+(by+(f.browRy||0))+') rotate('+(tl+(f.rotR||0))+' 190 80)');
+  mouth(f.open||0,f.smile||0);
+}
+function mouth(open,smile){
+  var w=21+8*smile,cy=160-smile*6,x1=150-w,x2=150+w;
+  var topC=cy+3-open*3,botC=cy+4+Math.max(smile,0)*11+open*36;
+  var d='M'+x1.toFixed(1)+' '+cy.toFixed(1)+' Q150 '+topC.toFixed(1)+' '+x2.toFixed(1)+' '+cy.toFixed(1)+' Q150 '+botC.toFixed(1)+' '+x1.toFixed(1)+' '+cy.toFixed(1)+' Z';
+  el.mouthFill.setAttribute('d',d);el.mouthClip.setAttribute('d',d);el.mouthLine.setAttribute('d',d);
+  el.mouthFill.style.opacity=(open>.03||Math.abs(smile)>.05)?1:0;
+  el.tongue.setAttribute('cy',(cy+10+open*24).toFixed(1));
+  el.tongue.style.opacity=open>.25?1:0;
+}
+function blinkAt(t){var m=t%3300;return m>3050&&m<3230?Math.sin((m-3050)/180*Math.PI):0}
+function pulse(a,s,d){return a>=s&&a<=s+d?Math.sin((a-s)/d*Math.PI):0}
+
+/* ---------- one frame at time t (ms since start) ---------- */
+function frame(t){
+  var tx=HX,ty=HY,rot=0,sx=1,sy=1,f={},armR=0,armL=0,earW=0,headBob=0,paws=0,hidden=true;
+  var alert=t>=ARRIVE&&!leaving;
+  // peeks from the bottom edge
+  if(t<EMERGE&&!leaving){
+    for(var i=0;i<SCH.length;i++){
+      var p=SCH[i],a=t-p.s;
+      if(a<=0||a>IN+p.hold+p.out)continue;
+      var v;
+      if(a<IN)v=eoBack(a/IN);else if(a<IN+p.hold)v=1;else v=1-ei((a-IN-p.hold)/p.out);
+      tx=lerp(HX,p.tx,v);ty=lerp(HY,p.ty,v);rot=p.rot*v;paws=cl(v,0,1);hidden=false;
+      var h=a-IN;                                   // time since fully up
+      if(p.k==='C'){                                // curious, wide eyes, small smile; no hum
+        f={browY:-10,smile:.45,open:.12,pupX:Math.sin(h/420)*.5,pupY:-.15,pupS:1.15};
+        rot+=3*Math.sin(h/300);earW=6*Math.sin(h/90);
+      }else{                                        // "what are you up to?": one brow up, half-lidded, side-eye, "mm mmm"
+        var dir=p.k==='A'?1:-1;
+        var hum=Math.max(pulse(h,900,330),pulse(h,1380,480));
+        f={browY:-3,browRy:-15,browLy:3,rotL:12,rotR:7,lidL:.24,lidR:.24,
+           pupX:dir*.85*Math.sin(h/560),pupY:-.1,pupS:1.04,smile:.12-.5*hum,open:0};
+        rot+=1.5*Math.sin(h/700);headBob=3*hum;earW=(h>2100?5*Math.sin(h/80)*Math.max(0,1-(h-2100)/500):0);
+        if(h>=880&&!sfx[p.k]){sfx[p.k]=1;if(C.sound)native('sfx','hum')}
+      }
+      ty+=2.2*Math.sin(h/330)*(v>.99?1:0)+headBob;
+    }
+  }
+  // coming fully out
+  if(t>=EMERGE&&t<ARRIVE&&!leaving){
+    var hp=cl((t-EMERGE)/EMERGE_MS,0,1);hidden=false;
+    var L=SCH[SCH.length-1];
+    tx=lerp(L.tx,0,eo(hp));ty=lerp(L.ty,0,eo(hp))-70*4*hp*(1-hp);rot=lerp(L.rot,0,eo(hp));paws=cl(1-hp*4,0,1);
+    f={open:.7,smile:.55,browY:-12,pupX:.15,pupY:-.3,pupS:1.12};armR=-130*hp+10*Math.sin(t/60)*hp;armL=130*hp-10*Math.sin(t/60)*hp;earW=-10*hp;
+    if(hp>=1){var lt=0}
+  }
+  if(alert){
+    hidden=false;
+    var a2=t-ARRIVE,ap=cl(a2/260,0,1),m=0;
+    if(speaking){m=.5+.5*Math.sin(t/74)*Math.cos(t/131+1.2);m=cl(m*1.15,0,1)*.9}
+    tx=0;ty=-3*(.5+.5*Math.sin(t/340));
+    f={tilt:lerp(0,23,eo(ap)),browY:-7*ap,open:speaking?m:.3*ap,smile:0,pupS:1.08,pupX:Math.sin(t/900)*.4,pupY:.1};
+    armR=-105+(speaking?16*Math.sin(t/110):10*Math.sin(t/230));earW=-9;
+    if(speaking){headBob=2.2*Math.sin(t/96);rot=1.8*Math.sin(t/200)}
+    if(a2<220){var k2=Math.sin(cl(a2/220,0,1)*Math.PI);sy=1-.1*k2;sx=1+.07*k2}
+  }
+  if(leaving){
+    hidden=false;
+    var lp=cl((t-leaveT)/700,0,1),wv=cl(lp/.32,0,1);
+    ty=lp<.32?-16*Math.sin(wv*Math.PI):lerp(0,HY,ei((lp-.32)/.68));tx=lp<.32?0:lerp(0,HX,ei((lp-.32)/.68));
+    f={open:.3*(1-lp),smile:.9,browY:-8,pupS:1.05};armR=-100+24*Math.sin(t/70)*(1-lp);
+    if(lp>=1&&!closedSent){closedSent=true;running=false;stage.style.visibility='hidden';fox.style.visibility='hidden';native('closed');return}
+  }
+  if(hidden){fox.style.visibility='hidden';aura.style.opacity=0;bubble.style.opacity=0;return}
+  fox.style.visibility='visible';
+  var bl=blinkAt(t);if(bl>0){f.lidL=Math.max(f.lidL||0,bl);f.lidR=Math.max(f.lidR||0,bl)}
+  face(f);
+  el.paws.setAttribute('opacity',paws.toFixed(2));
+  el.armR.setAttribute('transform','rotate('+armR+' 204 228)');
+  el.armL.setAttribute('transform','rotate('+armL+' 96 228)');
+  el.earL.setAttribute('transform','rotate('+(-earW)+' 100 94)');
+  el.earR.setAttribute('transform','rotate('+(earW)+' 200 94)');
+  el.tail.setAttribute('transform','rotate('+(9*Math.sin(t/190))+' 205 276)');
+  el.head.setAttribute('transform','translate(0 '+(headBob*.6)+') rotate('+(headBob*.4)+' 150 190)');
+  el.bars.setAttribute('fill',alert&&Math.floor(t/260)%2?'#FF8A95':'#CFF3FF');
+  fox.style.transform='translate('+tx.toFixed(1)+'px,'+ty.toFixed(1)+'px) rotate('+rot.toFixed(1)+'deg) scale('+sx.toFixed(3)+','+sy.toFixed(3)+')';
+  if(alert){
+    var pu=.92+.1*Math.sin(t/240);
+    aura.style.opacity=cl((t-ARRIVE)/300,0,1)*(.75+.25*Math.sin(t/240));aura.style.transform='scale('+pu+')';
+    var bp=cl((t-ARRIVE)/340,0,1),ov=bp<1?1+.08*Math.sin(bp*Math.PI):1;
+    bubble.style.opacity=bp;bubble.style.transform='translateX(-50%) scale('+(.55+.45*eo(bp))*ov+')';
+    btitle.textContent=C.title.slice(0,Math.max(0,Math.floor((t-ARRIVE)/22)));
+  }else if(leaving){
+    var q=cl((t-leaveT)/280,0,1);aura.style.opacity=(1-q)*.7;bubble.style.opacity=1-q;
+  }else{aura.style.opacity=0;bubble.style.opacity=0}
+  if(t>=ARRIVE&&!arrived&&!leaving){arrived=true;native('arrived')}
+}
+function loop(now){if(!running)return;frame(now-t0);raf=requestAnimationFrame(loop)}
+
+/* ---------- public api ---------- */
+function layout(){
+  var w=bw();bubble.style.width=w+'px';
+  var left=(window.innerWidth-w)/2;
+  bubble.style.setProperty('--tail',Math.max(24,(8+FW*.5)-left-11)+'px');
+}
+window.petStart=function(o){
+  C.name=o.name;C.nums=o.nums;C.pct=o.pct;C.ta=!!o.ta;C.sound=o.sound!==false;
+  C.title=C.ta?(o.name+' வரம்பு எட்டியது!'):(o.name+' limit reached!');
+  bnums.textContent=o.nums+'  ·  '+o.pct+'%';btitle.textContent='';
+  plan(!!o.quick);sfx={};arrived=false;leaving=false;closedSent=false;speaking=false;
+  layout();stage.style.visibility='visible';
+  cancelAnimationFrame(raf);running=true;t0=performance.now();raf=requestAnimationFrame(loop);
+};
+window.petSpeaking=function(b){speaking=!!b};
+window.petLeave=function(){if(leaving)return;leaving=true;speaking=false;leaveT=performance.now()-t0};
+window.petReset=function(){running=false;cancelAnimationFrame(raf);stage.style.visibility='hidden';fox.style.visibility='hidden';speaking=false;leaving=false;arrived=false};
+// deterministic frame for previews: petPreview(opts, t, speaking, quick)
+window.petPreview=function(o,t,spk,quick){C.name=o.name;C.nums=o.nums;C.pct=o.pct;C.ta=false;C.sound=false;C.title=o.name+' limit reached!';
+  bnums.textContent=o.nums+'  ·  '+o.pct+'%';layout();plan(!!quick);stage.style.visibility='visible';sfx={};arrived=true;speaking=!!spk;leaving=false;frame(t)};
+plan(false);face({});
+native('ready');
+})();
+</script></body></html>

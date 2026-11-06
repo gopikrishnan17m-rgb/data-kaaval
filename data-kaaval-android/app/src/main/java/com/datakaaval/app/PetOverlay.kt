@@ -1,12 +1,7 @@
 package com.datakaaval.app
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
-import android.animation.ValueAnimator
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
@@ -14,349 +9,316 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
-import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
-import android.view.animation.DecelerateInterpolator
-import android.view.animation.LinearInterpolator
-import android.view.animation.OvershootInterpolator
-import android.widget.FrameLayout
-import android.widget.ImageView
+import android.webkit.JavascriptInterface
+import android.webkit.RenderProcessGoneDetail
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.webkit.WebViewAssetLoader
+import org.json.JSONObject
 import java.util.LinkedList
 
 /**
- * The cat alert. The moment a limit is reached the cat peeks in from the left edge twice, then waddles in,
- * says which app hit its limit (meow + voice) and waits in a small card. Touches go through to the app
- * underneath everywhere except on the card itself.
+ * The mascot alert. A transparent web page (assets/pet.html) plays the animation on top of every app:
+ * liquid sweeps in from the left edge, the mascot peeks twice, hops in, and talks. The page never takes
+ * touches; only the two small buttons (a separate native window) do.
  */
 object PetOverlay {
 
     private class Req(
         val name: String, val nums: String, val pct: Int,
-        val ta: Boolean, val sound: Boolean, val onClosed: () -> Unit
+        val ta: Boolean, val sound: Boolean, val quick: Boolean, val onClosed: () -> Unit, val fallback: () -> Unit
     )
+
+    private const val STAY_AFTER_SPEECH_MS = 5000L
+    private const val STAY_HARD_MAX_MS = 25000L
+    private const val IDLE_FREE_MS = 8 * 60_000L
 
     private val main = Handler(Looper.getMainLooper())
     private val queue = LinkedList<Req>()
-    private var busy = false
-    private var bitmap: Bitmap? = null
+    private var web: WebView? = null
+    @Volatile private var pageReady = false
+    private var cur: Req? = null
+    private var buttons: LinearLayout? = null
+    private var closing = false
+    private var autoClose: Runnable? = null
+    private var appCtx: Context? = null
 
-    private const val PEEK1_AT = 0f
-    private const val PEEK2_AT = 920f
-    private const val WALK_AT = 1740f
-    private const val WALK_MS = 1100f
-    private const val TOTAL_MS = 2840L
-    private const val STAY_MS = 15000L
+    private val freeWeb = Runnable {
+        if (cur == null) destroyWeb()
+    }
 
+    /** Called while some limit is still waiting to be reached, so the mascot can appear with no loading delay. */
     fun prewarm(ctx: Context) {
         val app = ctx.applicationContext
         main.post {
-            bitmap(app)
+            appCtx = app
             PetVoice.prewarm(app)
+            ensureWeb(app)
+            main.removeCallbacks(freeWeb)
+            main.postDelayed(freeWeb, IDLE_FREE_MS)
         }
     }
 
-    private fun bitmap(ctx: Context): Bitmap? {
-        bitmap?.let { return it }
-        return try {
-            val o = BitmapFactory.Options()
-            o.inScaled = false
-            BitmapFactory.decodeResource(ctx.resources, R.drawable.pet, o).also { bitmap = it }
+    private fun destroyWeb() {
+        try {
+            web?.destroy()
         } catch (e: Exception) {
-            null
         }
+        web = null
+        pageReady = false
     }
 
-    fun show(ctx: Context, name: String, nums: String, pct: Int, ta: Boolean, sound: Boolean, onClosed: () -> Unit) {
+    private fun ensureWeb(app: Context): WebView {
+        web?.let { return it }
+        val w = WebView(app)
+        w.setBackgroundColor(Color.TRANSPARENT)
+        w.overScrollMode = WebView.OVER_SCROLL_NEVER
+        w.isVerticalScrollBarEnabled = false
+        w.isHorizontalScrollBarEnabled = false
+        w.settings.javaScriptEnabled = true
+        w.settings.allowFileAccess = false
+        val loader = WebViewAssetLoader.Builder()
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(app))
+            .build()
+        w.webViewClient = object : WebViewClient() {
+            override fun shouldInterceptRequest(v: WebView, request: WebResourceRequest): WebResourceResponse? =
+                loader.shouldInterceptRequest(request.url)
+
+            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                // the system reclaimed the page; build a fresh one next time
+                pageReady = false
+                web = null
+                return true
+            }
+        }
+        w.addJavascriptInterface(PetBridge(), "KaavalPet")
+        pageReady = false
+        w.loadUrl("https://appassets.androidplatform.net/assets/pet.html")
+        web = w
+        return w
+    }
+
+    class PetBridge {
+        @JavascriptInterface
+        fun ready(s: String) { pageReady = true }
+
+        @JavascriptInterface
+        fun sfx(name: String) { PetVoice.play(name) }
+
+        @JavascriptInterface
+        fun arrived(s: String) { main.post { onArrived() } }
+
+        @JavascriptInterface
+        fun closed(s: String) { main.post { finish() } }
+    }
+
+    fun show(ctx: Context, name: String, nums: String, pct: Int, ta: Boolean, sound: Boolean, quick: Boolean,
+             fallback: () -> Unit, onClosed: () -> Unit) {
         val app = ctx.applicationContext
         main.post {
-            val r = Req(name, nums, pct, ta, sound, onClosed)
-            if (busy) queue.add(r) else display(app, r)
+            appCtx = app
+            val r = Req(name, nums, pct, ta, sound, quick, onClosed, fallback)
+            if (cur != null) queue.add(r) else display(app, r)
         }
     }
 
-    private fun lerp(a: Float, b: Float, p: Float): Float = a + (b - a) * p
-    private fun clamp01(v: Float): Float = if (v < 0f) 0f else if (v > 1f) 1f else v
-    private fun easeOut(p: Float): Float = 1f - (1f - p) * (1f - p)
-    private fun easeIn(p: Float): Float = p * p
-
-    /** 0 -> 1 while the cat leans in, stays 1 while it looks, then 1 -> 0 as it ducks back. */
-    private fun peek(t: Float, start: Float, inMs: Float, holdMs: Float, outMs: Float): Float {
-        val x = t - start
-        return when {
-            x <= 0f -> 0f
-            x < inMs -> easeOut(x / inMs)
-            x < inMs + holdMs -> 1f
-            x < inMs + holdMs + outMs -> 1f - easeIn((x - inMs - holdMs) / outMs)
-            else -> 0f
+    private fun js(code: String) {
+        try {
+            web?.evaluateJavascript(code, null)
+        } catch (e: Exception) {
         }
     }
 
-    private fun display(ctx: Context, r: Req) {
-        val bmp = bitmap(ctx)
-        if (bmp == null) {
-            r.onClosed()
-            next(ctx)
-            return
-        }
-        busy = true
-        val wm = ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        val dm = ctx.resources.displayMetrics
-        val d = dm.density
-        fun dp(v: Int): Int = (v * d).toInt()
-
-        val petW = dp(190)
-        val petH = (petW * bmp.height / bmp.width.toFloat()).toInt()
-        val bottomGap = dp(48)
-        val out = -(petW + dp(30)).toFloat()
-        val peek1 = -petW * 0.55f
-        val peek2 = -petW * 0.30f
-
-        // Stage window: only draws the cat, never takes touches.
-        val stage = FrameLayout(ctx)
-        val pet = ImageView(ctx)
-        pet.setImageBitmap(bmp)
-        pet.scaleType = ImageView.ScaleType.FIT_XY
-        val plp = FrameLayout.LayoutParams(petW, petH, Gravity.BOTTOM or Gravity.START)
-        plp.leftMargin = dp(8)
-        plp.bottomMargin = bottomGap
-        stage.addView(pet, plp)
-        pet.pivotX = petW / 2f
-        pet.pivotY = petH.toFloat()
-        pet.translationX = out
-
-        val stageLp = WindowManager.LayoutParams(
+    private fun display(app: Context, r: Req) {
+        cur = r
+        closing = false
+        main.removeCallbacks(freeWeb)
+        PetVoice.prewarm(app)
+        val w = ensureWeb(app)
+        val wm = app.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val lp = WindowManager.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.TRANSLUCENT
         )
         try {
-            wm.addView(stage, stageLp)
+            (w.parent as? ViewGroup)?.removeView(w)
+            wm.addView(w, lp)
         } catch (e: Exception) {
-            busy = false
-            r.onClosed()
-            next(ctx)
+            abort(r)
             return
         }
-
-        var card: View? = null
-        var closed = false
-        var idle: ValueAnimator? = null
-        var timeline: ValueAnimator? = null
-        var autoClose: Runnable? = null
-
-        fun finishAll() {
-            try { wm.removeView(stage) } catch (e: Exception) { }
-            busy = false
-            r.onClosed()
-            next(ctx)
-        }
-
-        fun dismiss() {
-            if (closed) return
-            closed = true
-            autoClose?.let { main.removeCallbacks(it) }
-            idle?.cancel()
-            timeline?.cancel()
-            PetVoice.stop()
-            card?.let { c ->
-                c.animate().alpha(0f).scaleX(0.8f).scaleY(0.8f).setDuration(180).withEndAction {
-                    try { wm.removeView(c) } catch (e: Exception) { }
-                }.start()
-            }
-            val from = pet.translationX
-            val bye = ValueAnimator.ofFloat(0f, 1f)
-            bye.duration = 420
-            bye.addUpdateListener {
-                val p = easeIn(it.animatedValue as Float)
-                pet.translationX = lerp(from, out, p)
-                pet.rotation = lerp(pet.rotation, -6f, p)
-            }
-            bye.addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(a: Animator) { finishAll() }
-            })
-            bye.start()
-        }
-
-        fun buildCard(): View {
-            val box = LinearLayout(ctx)
-            box.orientation = LinearLayout.VERTICAL
-            box.setPadding(dp(18), dp(16), dp(18), dp(14))
-            val bg = GradientDrawable()
-            bg.cornerRadius = dp(22).toFloat()
-            bg.setColor(Color.parseColor("#F2101A2E"))
-            bg.setStroke(dp(2), Color.parseColor("#FF5D6C"))
-            box.background = bg
-            box.elevation = dp(10).toFloat()
-
-            val title = TextView(ctx)
-            title.text = if (r.ta) "${r.name} வரம்பு எட்டியது!" else "${r.name} limit reached!"
-            title.textSize = 19f
-            title.setTextColor(Color.WHITE)
-            title.typeface = Typeface.DEFAULT_BOLD
-            box.addView(title)
-
-            val nums = TextView(ctx)
-            nums.text = r.nums + "  ·  " + r.pct + "%"
-            nums.textSize = 16f
-            nums.setTextColor(Color.parseColor("#FF8A95"))
-            nums.typeface = Typeface.DEFAULT_BOLD
-            nums.setPadding(0, dp(4), 0, dp(12))
-            box.addView(nums)
-
-            val row = LinearLayout(ctx)
-            row.orientation = LinearLayout.HORIZONTAL
-            fun btn(text: String, fill: Int, fg: Int, click: () -> Unit): TextView {
-                val t = TextView(ctx)
-                t.text = text
-                t.textSize = 15f
-                t.setTextColor(fg)
-                t.typeface = Typeface.DEFAULT_BOLD
-                t.gravity = Gravity.CENTER
-                val g = GradientDrawable()
-                g.cornerRadius = dp(14).toFloat()
-                g.setColor(fill)
-                t.background = g
-                t.setOnClickListener { click() }
-                return t
-            }
-            val ok = btn(if (r.ta) "சரி" else "OK", Color.parseColor("#FF5D6C"), Color.parseColor("#0A0F1C")) { dismiss() }
-            val open = btn(if (r.ta) "ஆப்பைத் திற" else "Open app", Color.parseColor("#27334D"), Color.WHITE) {
-                dismiss()
-                try {
-                    ctx.startActivity(Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                } catch (e: Exception) {
-                }
-            }
-            row.addView(ok, LinearLayout.LayoutParams(0, dp(44), 1f))
-            row.addView(open, LinearLayout.LayoutParams(0, dp(44), 1.4f).apply { leftMargin = dp(10) })
-            box.addView(row)
-            return box
-        }
-
-        fun arrive() {
-            if (closed) return
-            // little landing squash
-            val squash = ValueAnimator.ofFloat(0f, 1f)
-            squash.duration = 380
-            squash.addUpdateListener {
-                val p = it.animatedValue as Float
-                val k = Math.sin(p * Math.PI).toFloat()
-                pet.scaleY = 1f - 0.07f * k
-                pet.scaleX = 1f + 0.05f * k
-            }
-            squash.start()
-
-            val cardW = Math.min(dm.widthPixels - dp(24), dp(360))
-            val c = buildCard()
-            card = c
-            val lp = WindowManager.LayoutParams(
-                cardW, ViewGroup.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                PixelFormat.TRANSLUCENT
-            )
-            lp.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-            lp.y = bottomGap + petH + dp(4)
-            try {
-                wm.addView(c, lp)
-                c.alpha = 0f
-                c.scaleX = 0.6f
-                c.scaleY = 0.6f
-                c.pivotX = dp(40).toFloat()
-                c.pivotY = dp(120).toFloat()
-                c.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(320)
-                    .setInterpolator(OvershootInterpolator(1.6f)).start()
-            } catch (e: Exception) {
-                card = null
-            }
-
-            if (r.sound) {
-                PetVoice.meow(1.05f)
-                if (r.ta) {
-                    PetVoice.say("மியாவ்! ${r.name} டேட்டா வரம்பு முடிந்துவிட்டது!", "Meow! ${r.name} data limit reached!", true)
+        val json = JSONObject()
+            .put("name", r.name).put("nums", r.nums).put("pct", r.pct)
+            .put("ta", r.ta).put("sound", r.sound).put("quick", r.quick).toString()
+        var waited = 0
+        val starter = object : Runnable {
+            override fun run() {
+                if (cur !== r) return
+                if (pageReady) {
+                    js("window.petStart($json)")
+                } else if (waited >= 2000) {
+                    abort(r)
                 } else {
-                    PetVoice.say("Meow! ${r.name} data limit reached!", "Meow! ${r.name} data limit reached!", false)
+                    waited += 40
+                    main.postDelayed(this, 40)
                 }
             }
-
-            val bob = ValueAnimator.ofFloat(0f, 1f)
-            bob.duration = 1500
-            bob.repeatCount = ValueAnimator.INFINITE
-            bob.interpolator = LinearInterpolator()
-            bob.addUpdateListener {
-                val s = Math.sin(it.animatedValue as Float * 2 * Math.PI).toFloat()
-                pet.translationY = -dp(4) * (0.5f + 0.5f * s)
-                pet.rotation = 2.5f * s
-            }
-            idle = bob
-            bob.start()
-
-            val ac = Runnable { dismiss() }
-            autoClose = ac
-            main.postDelayed(ac, STAY_MS)
         }
-
-        // Cat starts moving this instant; first meow is immediate.
-        if (r.sound) PetVoice.meow(1.0f)
-        var secondMeow = false
-        val tl = ValueAnimator.ofFloat(0f, TOTAL_MS.toFloat())
-        tl.duration = TOTAL_MS
-        tl.interpolator = LinearInterpolator()
-        tl.addUpdateListener {
-            val t = it.animatedValue as Float
-            var tx = out
-            var rot = 0f
-            var ty = 0f
-            val v1 = peek(t, PEEK1_AT, 280f, 300f, 240f)
-            val v2 = peek(t, PEEK2_AT, 260f, 280f, 220f)
-            if (t < WALK_AT) {
-                if (v1 > 0f) {
-                    tx = lerp(out, peek1, v1)
-                    rot = 9f * v1 + 2.5f * v1 * Math.sin(t / 55.0).toFloat()
-                }
-                if (v2 > 0f) {
-                    tx = lerp(out, peek2, v2)
-                    rot = 11f * v2 + 2.5f * v2 * Math.sin(t / 55.0).toFloat()
-                }
-                if (!secondMeow && t >= PEEK2_AT) {
-                    secondMeow = true
-                    if (r.sound) PetVoice.meow(1.15f)
-                }
-            } else {
-                val wp = clamp01((t - WALK_AT) / WALK_MS)
-                tx = lerp(out, 0f, easeOut(wp))
-                val ph = (wp * 5.0 * Math.PI).toFloat()
-                rot = 6f * Math.sin(ph.toDouble()).toFloat()
-                ty = -dp(9) * Math.abs(Math.sin(ph.toDouble())).toFloat()
-            }
-            pet.translationX = tx
-            pet.translationY = ty
-            pet.rotation = rot
-        }
-        tl.addListener(object : AnimatorListenerAdapter() {
-            private var cancelled = false
-            override fun onAnimationCancel(a: Animator) { cancelled = true }
-            override fun onAnimationEnd(a: Animator) {
-                if (!cancelled) {
-                    pet.translationX = 0f
-                    pet.translationY = 0f
-                    pet.rotation = 0f
-                    arrive()
-                }
-            }
-        })
-        timeline = tl
-        tl.start()
+        starter.run()
     }
 
-    private fun next(ctx: Context) {
+    /** The page could not be shown: tidy up and let the caller use the plain full-screen popup instead. */
+    private fun abort(r: Req) {
+        removeStage()
+        cur = null
+        try {
+            r.fallback()
+        } catch (e: Exception) {
+        }
+        next()
+    }
+
+    private fun removeStage() {
+        val app = appCtx ?: return
+        val wm = app.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        buttons?.let {
+            try { wm.removeView(it) } catch (e: Exception) { }
+        }
+        buttons = null
+        web?.let {
+            try { wm.removeView(it) } catch (e: Exception) { }
+        }
+        autoClose?.let { main.removeCallbacks(it) }
+        autoClose = null
+    }
+
+    private fun onArrived() {
+        val r = cur ?: return
+        if (closing) return
+        val app = appCtx ?: return
+        showButtons(app, r)
+        // the mascot leaves 5 seconds after it has finished telling the person
+        val ac = Runnable { dismiss() }
+        autoClose = ac
+        main.postDelayed(ac, STAY_HARD_MAX_MS)
+        val afterSpeech = Runnable {
+            js("window.petSpeaking(false)")
+            if (cur === r && !closing) {
+                autoClose?.let { main.removeCallbacks(it) }
+                autoClose = ac
+                main.postDelayed(ac, STAY_AFTER_SPEECH_MS)
+            }
+        }
+        if (r.sound) {
+            val line = if (r.ta) "ஐயோ! ${r.name} டேட்டா வரம்பு முடிந்துவிட்டது!" else "Oh no! ${r.name} data limit reached!"
+            val en = "Oh no! ${r.name} data limit reached!"
+            PetVoice.say(line, en, r.ta, { js("window.petSpeaking(true)") }, { afterSpeech.run() })
+        } else {
+            autoClose?.let { main.removeCallbacks(it) }
+            main.postDelayed(ac, STAY_AFTER_SPEECH_MS)
+        }
+    }
+
+    private fun showButtons(app: Context, r: Req) {
+        val d = app.resources.displayMetrics.density
+        fun dp(v: Int): Int = (v * d).toInt()
+        val wdp = app.resources.displayMetrics.widthPixels / d
+        val bubbleW = Math.min(wdp - 24f, 360f)
+        val row = LinearLayout(app)
+        row.orientation = LinearLayout.HORIZONTAL
+        fun btn(text: String, fill: Int, fg: Int, click: () -> Unit): TextView {
+            val t = TextView(app)
+            t.text = text
+            t.textSize = 15f
+            t.setTextColor(fg)
+            t.typeface = Typeface.DEFAULT_BOLD
+            t.gravity = Gravity.CENTER
+            val g = GradientDrawable()
+            g.cornerRadius = dp(14).toFloat()
+            g.setColor(fill)
+            t.background = g
+            t.setOnClickListener { click() }
+            return t
+        }
+        val ok = btn(if (r.ta) "சரி" else "OK", Color.parseColor("#FF5D6C"), Color.parseColor("#0A0F1C")) { dismiss() }
+        val open = btn(if (r.ta) "ஆப்பைத் திற" else "Open app", Color.parseColor("#2A3858"), Color.WHITE) {
+            dismiss()
+            try {
+                app.startActivity(Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (e: Exception) {
+            }
+        }
+        row.addView(ok, LinearLayout.LayoutParams(0, dp(44), 1f))
+        row.addView(open, LinearLayout.LayoutParams(0, dp(44), 1.4f).apply { leftMargin = dp(10) })
+        row.alpha = 0f
+        val lp = WindowManager.LayoutParams(
+            dp((bubbleW - 36f).toInt()), ViewGroup.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        )
+        lp.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+        lp.y = dp(262 + 14)
+        try {
+            val wm = app.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+            wm.addView(row, lp)
+            buttons = row
+            row.animate().alpha(1f).setStartDelay(220).setDuration(240).start()
+        } catch (e: Exception) {
+            buttons = null
+        }
+    }
+
+    private fun dismiss() {
+        if (closing) return
+        closing = true
+        autoClose?.let { main.removeCallbacks(it) }
+        autoClose = null
+        PetVoice.stop()
+        val app = appCtx
+        val b = buttons
+        if (app != null && b != null) {
+            try {
+                (app.getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(b)
+            } catch (e: Exception) {
+            }
+            buttons = null
+        }
+        js("window.petLeave()")
+        // safety net in case the page never reports that it finished
+        val r = cur
+        main.postDelayed({ if (cur === r && closing) finish() }, 1600)
+    }
+
+    private fun finish() {
+        val r = cur ?: return
+        removeStage()
+        js("window.petReset()")
+        cur = null
+        closing = false
+        try {
+            r.onClosed()
+        } catch (e: Exception) {
+        }
+        main.removeCallbacks(freeWeb)
+        main.postDelayed(freeWeb, IDLE_FREE_MS)
+        next()
+    }
+
+    private fun next() {
+        val app = appCtx ?: return
         val n = queue.poll()
-        if (n != null) display(ctx, n)
+        if (n != null) display(app, n)
     }
 }

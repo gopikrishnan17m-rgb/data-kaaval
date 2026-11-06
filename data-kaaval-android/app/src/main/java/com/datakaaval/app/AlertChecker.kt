@@ -56,7 +56,10 @@ object AlertChecker {
             val name = if (id == "hs") (if (ta) "மொபைல் ஹாட்ஸ்பாட்" else "Mobile hotspot") else names.optString(id, id)
             val tag = "${id}@${lim.toInt()}"
             val pct = Math.round(used / lim * 100).toInt()
-            if (used < lim) pending = true
+            if (used < lim) {
+                pending = true
+                if (popup) PetOverlay.prewarm(ctx)
+            }
             if (used >= lim) {
                 once("w$tag")
                 if (once("o$tag")) {
@@ -120,12 +123,15 @@ object AlertChecker {
                 } catch (e: Exception) { JSONObject() }
                 val style = cfg.optString("style", "pet")
                 val sound = cfg.optBoolean("petSound", true)
+                val quick = cfg.optString("intro", "full") == "quick"
                 when (style) {
                     "full" -> OverlayManager.showLimit(ctx, title, body, nums, pct, ta)
-                    "both" -> PetOverlay.show(ctx, name, nums, pct, ta, sound) {
-                        OverlayManager.showLimit(ctx, title, body, nums, pct, ta)
-                    }
-                    else -> PetOverlay.show(ctx, name, nums, pct, ta, sound) { }
+                    "both" -> PetOverlay.show(ctx, name, nums, pct, ta, sound, quick,
+                        { OverlayManager.showLimit(ctx, title, body, nums, pct, ta) },
+                        { OverlayManager.showLimit(ctx, title, body, nums, pct, ta) })
+                    else -> PetOverlay.show(ctx, name, nums, pct, ta, sound, quick,
+                        { OverlayManager.showLimit(ctx, title, body, nums, pct, ta) },
+                        { })
                 }
             } else OverlayManager.showBanner(ctx, title, "$body · $nums")
             if (notifyOn) notifyPlain(ctx, title, body, nums, id)

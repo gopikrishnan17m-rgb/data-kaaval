@@ -217,6 +217,27 @@ input[type=range]{width:100%;accent-color:var(--accent);min-height:30px}
 .pkq{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
 .pickrow span{font-size:.8rem;color:var(--muted)}
 
+/* compact mode for Limits and Settings */
+.cmp .card{padding:12px;border-radius:18px}
+.cmp .card h2{font-size:.95rem;margin-bottom:8px}
+.cmp .sub{font-size:.7rem}
+.cmp .switch{padding:8px 0;font-size:.8rem}
+.cmp .tg{width:42px;height:26px}.cmp .tg::after{width:18px;height:18px}
+.cmp .switch[aria-checked="true"] .tg::after{transform:translateX(16px)}
+.cmp .seg{padding:3px;border-radius:12px}.cmp .seg button{min-height:32px;font-size:.74rem;border-radius:9px}
+.cmp .btn{min-height:34px;font-size:.76rem;padding:0 12px;border-radius:11px}
+.cmp .lrow{padding:7px 0}.cmp .lrow b{font-size:.82rem}
+.cmp .lbl,.cmp .field label{font-size:.64rem}
+.cmp input[type=number],.cmp input[type=text],.cmp select{min-height:34px;font-size:.8rem;border-radius:10px;padding:0 10px}
+.cmp .ico{width:30px;height:30px;border-radius:9px}
+.cmp .aname{font-size:.84rem}
+.cmp .chip{min-height:28px;padding:3px 10px;font-size:.74rem}
+.cmp .lrow2{padding:7px 0;gap:6px}
+.cmp .three{grid-template-columns:minmax(0,110px) auto auto;justify-content:start}
+.cmp .three select{min-width:62px}
+.cmp .three .btn{min-height:34px}
+.cmp .pill{font-size:.68rem;padding:3px 9px}
+.seeall{display:block;margin:10px auto 0;border:1px solid var(--line);background:var(--surface2);color:var(--fg);border-radius:99px;padding:5px 16px;font-weight:800;font-size:.76rem}
 /* app logos */
 img.ico{object-fit:cover;background:var(--surface2)}
 
@@ -452,16 +473,18 @@ function usedNow(id){
   if(v==null||v<0)v=dayOf(todayKey())[id]||0;
   return v;
 }
-function applyLimit(id,mb){
+function applyLimit(id,mb,raw,unit){
   var ap=appById(id);if(!ap)return;
   if(!S.oneoff)S.oneoff={};
   var al=S.alerts[todayKey()];if(al){delete al['a100'+id];delete al['a80'+id]}
-  if(!(mb>0)){ap.limit=null;delete S.oneoff[id];toast('Limit removed for '+ap.name)}
+  if(!S.limIn)S.limIn={};
+  if(!(mb>0)){ap.limit=null;delete S.oneoff[id];delete S.limIn[id];toast('Limit removed for '+ap.name)}
   else if(S.limMode==='more'){
     var used=usedNow(id),total=Math.round(used+mb);
     S.oneoff[id]={d:todayKey(),mb:total};
     toast(ap.name+': '+fs(mb)+' more allowed. Popup at '+fs(total))
   }else{ap.limit=Math.round(mb);delete S.oneoff[id];toast(ap.name+' limit: '+fs(ap.limit))}
+  if(mb>0&&raw>0)S.limIn[id]={raw:raw,u:unit==='GB'?'GB':'MB',d:todayKey(),m:S.limMode};
   save();render(false);
 }
 function appRows(day,limits,anim){
@@ -634,9 +657,14 @@ function limitsView(){
   if(!hsUnit)hsUnit=(hsL&&hsL>=1024&&hsL%1024===0)?'GB':'MB';
   var hsPresets=[250,500,1024,2048,5120].map(function(v){return '<button class="chip'+(hsL===v&&S.limMode==='total'?' on':'')+'" data-act="hspreset" data-mb="'+v+'">'+(S.limMode==='more'?'+':'')+short(v)+'</button>'}).join('')+
     '<button class="chip'+(hs&&!hsL?' on':'')+'" data-act="hspreset" data-mb="0">No limit</button>';
+  var hsli=S.limIn&&S.limIn.hs,hsShown='';
+  if(hsL){
+    if(hsli&&hsli.m===S.limMode&&(hsli.m==='total'||hsli.d===todayKey())){hsShown=hsli.raw;hsUnit=hsli.u}
+    else if(S.limMode==='total')hsShown=hsUnit==='GB'?+(hsL/1024).toFixed(2):Math.round(hsL);
+  }
   var hsCardL=hs?'<section class="card"><h2>Mobile hotspot limit</h2>'+
     '<p class="sub" style="margin-bottom:12px">Data other devices use through your phone’s hotspot. You get a warning at '+S.warn+'% and a full-screen popup at 100%.</p>'+
-    '<div class="three" style="align-items:end"><div class="field"><label for="hsLim">'+(S.limMode==='more'?'More data allowed today':'Daily hotspot limit')+'</label><input id="hsLim" type="number" inputmode="decimal" min="0" step="any" placeholder="'+(S.limMode==='more'?'e.g. 25':'None')+'" value="'+(S.limMode==='total'&&hsL?(hsUnit==='GB'?+(hsL/1024).toFixed(2):Math.round(hsL)):'')+'"></div>'+
+    '<div class="three" style="align-items:end"><div class="field"><label for="hsLim">'+(S.limMode==='more'?'More data allowed today':'Daily hotspot limit')+'</label><input id="hsLim" type="number" inputmode="decimal" min="0" step="any" placeholder="'+(S.limMode==='more'?'e.g. 25':'None')+'" value="'+hsShown+'"></div>'+
     '<div class="field"><label for="hsUnit">Unit</label><select id="hsUnit"><option'+(hsUnit==='MB'?' selected':'')+'>MB</option><option'+(hsUnit==='GB'?' selected':'')+'>GB</option></select></div>'+
     '<button class="btn pri setbtn" data-act="sethslim" hidden>'+t('set')+'</button></div>'+
     '<p class="sub" style="margin-top:8px">Used today: <b>'+fs(dayOf(todayKey()).hs||0)+'</b>'+(hsL?' · limit '+fs(hsL):'')+'</p>'+
@@ -645,10 +673,15 @@ function limitsView(){
     var L=effLimit(a),usedA=dayOf(todayKey())[a.id]||0,oo=S.oneoff&&S.oneoff[a.id]&&S.oneoff[a.id].d===todayKey();
     var xbtn=NATIVE?(L?'<button class="x" data-act="clearlim" data-id="'+esc(a.id)+'" aria-label="Remove limit for '+esc(a.name)+'">×</button>':''):
       '<button class="x" data-act="delapp" data-id="'+esc(a.id)+'" aria-label="Remove '+esc(a.name)+'">×</button>';
+    var li=S.limIn&&S.limIn[a.id],shownV='',shownU='MB';
+    if(L){
+      if(li&&li.m===S.limMode&&(li.m==='total'||li.d===todayKey())){shownV=li.raw;shownU=li.u}
+      else if(S.limMode==='total'){if(L>=1024&&L%1024===0){shownV=L/1024;shownU='GB'}else shownV=Math.round(L)}
+    }
     return '<div class="lrow2"><div class="row">'+icoHTML(a)+'<div class="grow"><b class="aname" style="display:block">'+esc(a.name)+'</b>'+
       '<span class="sub">Used '+fs(usedA)+(L?' · limit '+fs(L)+(oo?' (today)':''):' · no limit')+'</span></div>'+xbtn+'</div>'+
-      '<div class="three"><input type="number" inputmode="decimal" min="0" step="any" placeholder="'+(S.limMode==='more'?'More, e.g. 25':'Total limit')+'" value="'+(S.limMode==='total'&&L?Math.round(L):'')+'" data-lim="'+esc(a.id)+'" aria-label="Limit for '+esc(a.name)+'">'+
-      '<select data-limu="'+esc(a.id)+'" aria-label="Unit"><option>MB</option><option>GB</option></select>'+
+      '<div class="three"><input type="number" inputmode="decimal" min="0" step="any" placeholder="'+(S.limMode==='more'?'More, e.g. 25':'Total limit')+'" value="'+shownV+'" data-lim="'+esc(a.id)+'" aria-label="Limit for '+esc(a.name)+'">'+
+      '<select data-limu="'+esc(a.id)+'" aria-label="Unit"><option'+(shownU==='MB'?' selected':'')+'>MB</option><option'+(shownU==='GB'?' selected':'')+'>GB</option></select>'+
       '<button class="btn pri sm setbtn" data-act="setlim" data-id="'+esc(a.id)+'" hidden>'+t('set')+'</button></div></div>';
   }).join('');
   var modeCard='<section class="card"><h2>Limit style</h2><div class="seg"><button data-act="limmode" data-v="more" class="'+(S.limMode==='more'?'on':'')+'">'+t('mode_more')+'</button>'+
@@ -660,13 +693,6 @@ function limitsView(){
     '<div class="field"><label for="planUnit">Unit</label><select id="planUnit" data-in="planunit"><option'+(planUnit==='MB'?' selected':'')+'>MB</option><option'+(planUnit==='GB'?' selected':'')+'>GB</option></select></div></div>'+
     '<div class="chips" style="margin-top:12px">'+presets+'</div>'+
     '<div class="field" style="margin-top:16px"><label for="warnR">Warn me at <b id="warnV">'+S.warn+'%</b></label><input id="warnR" type="range" min="50" max="95" step="5" value="'+S.warn+'" data-in="warn"></div></section>'+
-  '<section class="card"><h2>Alerts</h2>'+
-    sw('popup','Alert when a limit is reached',S.popup)+
-    '<div class="lbl" style="margin:14px 0 8px">Alert style</div><div class="seg">'+
-      [['pet','Cat'],['full','Full screen'],['both','Both']].map(function(o){return '<button data-act="alertstyle" data-v="'+o[0]+'" class="'+((S.alertStyle||'pet')===o[0]?'on':'')+'">'+o[1]+'</button>'}).join('')+'</div>'+
-    '<div style="height:8px"></div>'+sw('petSound','Cat voice and meow',S.petSound!==false)+
-    sw('notify','Phone notification',S.notify)+
-    '<p class="sub" style="margin-top:8px">Warnings at '+S.warn+'% show a message at the bottom. Reaching 100% shows the alert at once, even on top of other apps.</p></section>'+
   hsCardL+
   '<section class="card"><h2>App limits</h2>'+rows+
     '<p class="sub" style="margin-top:10px">Sum of app limits: '+(lsum?fs(lsum):'none')+(S.plan&&lsum>S.plan?' (above your daily plan)':'')+'</p></section>'+
@@ -678,34 +704,38 @@ function limitsView(){
 }
 function sw(id,label,on){return '<button class="switch" role="switch" aria-checked="'+(on?'true':'false')+'" data-act="sw" data-k="'+id+'"><span>'+label+'</span><span class="tg"></span></button>'}
 
+var more={};
+function seeBtn(k,total,n){return total>n?'<button class="seeall" data-act="seeall" data-k="'+k+'">'+(more[k]?'Show less':'See all ('+total+')')+'</button>':''}
 var ACC=['#2F7BFF','#00C2A8','#FF6B3D','#B06CFF','#FF4D8D','#F5B700','#3DDC84','#FFFFFF'];
 var FGS=['#FFFFFF','#FFE27A','#7CF5D4','#FFB4D0','#A9C7FF','#111111'];
 function styleView(){
   var u=S.ui;
-  var acc='<button class="sw auto'+(!u.accent?' on':'')+'" data-act="accent" data-c="" aria-label="Default accent"></button>'+ACC.map(function(c){return '<button class="sw'+(u.accent===c?' on':'')+'" style="--c:'+c+'" data-act="accent" data-c="'+c+'" aria-label="Accent '+c+'"></button>'}).join('')+
-    '<button class="sw custom" data-act="pick" data-t="accent" aria-label="Custom accent colour">+</button>';
-  var fg='<button class="sw auto'+(!u.fg?' on':'')+'" data-act="fg" data-c="" aria-label="Automatic text color"></button>'+FGS.map(function(c){return '<button class="sw'+(u.fg===c?' on':'')+'" style="--c:'+c+'" data-act="fg" data-c="'+c+'" aria-label="Text color '+c+'"></button>'}).join('')+
-    '<button class="sw custom" data-act="pick" data-t="fg" aria-label="Custom text colour">+</button>';
+  var acc='<button class="sw auto'+(!u.accent?' on':'')+'" data-act="accent" data-c="" aria-label="Default accent"></button>'+(more.acc?ACC:ACC.slice(0,4)).map(function(c){return '<button class="sw'+(u.accent===c?' on':'')+'" style="--c:'+c+'" data-act="accent" data-c="'+c+'" aria-label="Accent '+c+'"></button>'}).join('')+
+    (more.acc?'<button class="sw custom" data-act="pick" data-t="accent" aria-label="Custom accent colour">+</button>':'');
+  var fg='<button class="sw auto'+(!u.fg?' on':'')+'" data-act="fg" data-c="" aria-label="Automatic text color"></button>'+(more.fg?FGS:FGS.slice(0,4)).map(function(c){return '<button class="sw'+(u.fg===c?' on':'')+'" style="--c:'+c+'" data-act="fg" data-c="'+c+'" aria-label="Text color '+c+'"></button>'}).join('')+
+    (more.fg?'<button class="sw custom" data-act="pick" data-t="fg" aria-label="Custom text colour">+</button>':'');
   function segd(act,key,opts,cur){return '<div class="seg">'+opts.map(function(o){return '<button data-act="'+act+'" data-v="'+o[0]+'" class="'+(String(cur)===String(o[0])?'on':'')+'">'+o[1]+'</button>'}).join('')+'</div>'}
   var BGS=['#0A0F1C','#111827','#1A1033','#0B2B26','#2A0F1A','#1F1A0B','#000000','#1E40AF','#7C3AED','#BE185D','#047857','#B45309','#0E7490','#F2F5FA','#FFFFFF','#FFF4E5','#E8F7EE','#EAF1FF','#FDE8F1','#F1EAFF','#FFFBD6','#E0F7FA'];
   var GRD=[['#0F2027','#2C5364'],['#1A2980','#26D0CE'],['#42275A','#734B6D'],['#FF512F','#DD2476'],['#F7971E','#FFD200'],['#11998E','#38EF7D'],['#8E2DE2','#4A00E0'],['#FC466B','#3F5EFB'],['#0F0C29','#302B63'],['#FFECD2','#FCB69F'],['#E0EAFC','#CFDEF3'],['#C9FFBF','#FFAFBD']];
   var bgc=u.bg||null;
   var bgSolid='<button class="sw sq auto'+(!bgc?' on':'')+'" data-act="bg" data-c1="" aria-label="Automatic background"></button>'+
-    BGS.map(function(c){return '<button class="sw sq'+(bgc&&bgc.t==='solid'&&bgc.c1===c?' on':'')+'" style="--c:'+c+'" data-act="bg" data-c1="'+c+'" aria-label="Background '+c+'"></button>'}).join('');
-  var bgGrad=GRD.map(function(g){return '<button class="sw sq g'+(bgc&&bgc.t==='grad'&&bgc.c1===g[0]&&bgc.c2===g[1]?' on':'')+'" style="--c:'+g[0]+';--c2:'+g[1]+'" data-act="bg" data-c1="'+g[0]+'" data-c2="'+g[1]+'" aria-label="Gradient '+g[0]+' to '+g[1]+'"></button>'}).join('');
-  var bgCard='<section class="card"><h2>Background</h2><div class="lbl" style="margin-bottom:8px">Solid colors</div><div class="swatches">'+bgSolid+'</div>'+
-    '<div class="lbl" style="margin:16px 0 8px">Gradients</div><div class="swatches">'+bgGrad+'</div>'+
+    (more.bgs?BGS:BGS.slice(0,4)).map(function(c){return '<button class="sw sq'+(bgc&&bgc.t==='solid'&&bgc.c1===c?' on':'')+'" style="--c:'+c+'" data-act="bg" data-c1="'+c+'" aria-label="Background '+c+'"></button>'}).join('');
+  var bgGrad=(more.bgg?GRD:GRD.slice(0,5)).map(function(g){return '<button class="sw sq g'+(bgc&&bgc.t==='grad'&&bgc.c1===g[0]&&bgc.c2===g[1]?' on':'')+'" style="--c:'+g[0]+';--c2:'+g[1]+'" data-act="bg" data-c1="'+g[0]+'" data-c2="'+g[1]+'" aria-label="Gradient '+g[0]+' to '+g[1]+'"></button>'}).join('');
+  var bgCard='<section class="card"><h2>Background</h2><div class="lbl" style="margin-bottom:8px">Solid colors</div><div class="swatches">'+bgSolid+'</div>'+seeBtn('bgs',BGS.length+1,5)+
+    '<div class="lbl" style="margin:16px 0 8px">Gradients</div><div class="swatches">'+bgGrad+'</div>'+seeBtn('bgg',GRD.length,5)+
     '<div class="lbl" style="margin:16px 0 8px">Make your own</div>'+
     '<div class="pickrow"><button class="sw sq custom" data-act="pick" data-t="bg1" aria-label="Custom background colour">+</button><span>Solid</span>'+
     '<button class="sw sq custom" data-act="pick" data-t="bg2" aria-label="Custom gradient end colour">+</button><span>Gradient end</span></div></section>';
   function cdot(t,label){return '<button class="crow" data-act="pick" data-t="'+t+'"><span class="cdot" style="background:'+pkGet(t)+'"></span><span>'+label+'</span></button>'}
+  var OWN=[['bg1','Background'],['bg2','Gradient end'],['card','Cards and boxes'],['fg','Text'],['accent','Buttons and accent'],['okc','Normal (ring)'],['warnc','Warning'],['overc','Limit reached']];
   var myCard='<section class="card"><h2>Your own colours</h2><p class="sub" style="margin-bottom:12px">Tap any item and mix any colour you like with the sliders.</p><div class="cgrid">'+
-    cdot('bg1','Background')+cdot('bg2','Gradient end')+cdot('card','Cards and boxes')+cdot('fg','Text')+cdot('accent','Buttons and accent')+cdot('okc','Normal (ring)')+cdot('warnc','Warning')+cdot('overc','Limit reached')+
-    '</div><div class="actions" style="margin-top:14px"><button class="btn" data-act="colors-reset">Reset all colours</button></div></section>';
+    (more.own?OWN:OWN.slice(0,4)).map(function(o){return cdot(o[0],o[1])}).join('')+
+    '</div>'+seeBtn('own',OWN.length,4)+'<div class="actions" style="margin-top:14px"><button class="btn" data-act="colors-reset">Reset all colours</button></div></section>';
+  var _unused='<div<div class="actions" style="margin-top:14px"><button class="btn" data-act="colors-reset">Reset all colours</button></div></section>';
   return '<section class="card"><h2>Preview</h2><div class="sample"><span class="fx" id="sampleTxt">'+fs(1380)+' used today</span></div><p class="sub" style="margin-top:6px">Changes apply everywhere right away.</p></section>'+
   bgCard+myCard+
-  '<section class="card"><h2>Colors</h2><div class="lbl" style="margin-bottom:8px">Accent</div><div class="swatches">'+acc+'</div>'+
-    '<div class="lbl" style="margin:16px 0 8px">Text color</div><div class="swatches">'+fg+'</div></section>'+
+  '<section class="card"><h2>Colors</h2><div class="lbl" style="margin-bottom:8px">Accent</div><div class="swatches">'+acc+'</div>'+seeBtn('acc',ACC.length,4)+
+    '<div class="lbl" style="margin:16px 0 8px">Text color</div><div class="swatches">'+fg+'</div>'+seeBtn('fg',FGS.length,4)+'</section>'+
   '<section class="card"><h2>Text</h2><div class="lbl" style="margin-bottom:8px">Animation</div>'+
     segd('fx','fx',[['none','None'],['shimmer','Shimmer'],['pulse','Pulse'],['glow','Glow']],u.fx)+
     '<div class="lbl" style="margin:16px 0 8px">Boldness</div>'+segd('wt','wt',[[0,'Bold'],[1,'Extra bold'],[2,'Heaviest']],u.wt)+
@@ -723,6 +753,17 @@ function permsStatusCard(){
     return '<div class="lrow"><div class="grow"><b>'+r[0]+'</b><div class="sub">'+r[3]+'</div></div>'+(r[1]?'<span class="pill">Allowed</span>':'<button class="btn pri sm" data-act="'+r[2]+'">Allow</button>')+'</div>';
   }).join('')+'</section>';
 }
+function alertsCard(){
+  return '<section class="card"><h2>Alerts</h2>'+
+    sw('popup','Alert when a limit is reached',S.popup)+
+    '<div class="lbl" style="margin:14px 0 8px">Alert style</div><div class="seg">'+
+      [['pet','Mascot'],['full','Full screen'],['both','Both']].map(function(o){return '<button data-act="alertstyle" data-v="'+o[0]+'" class="'+((S.alertStyle||'pet')===o[0]?'on':'')+'">'+o[1]+'</button>'}).join('')+'</div>'+
+    '<div class="lbl" style="margin:14px 0 8px">Mascot entrance</div><div class="seg">'+
+      [['full','Peek-a-boo (11 s)'],['quick','Quick (3 s)']].map(function(o){return '<button data-act="petintro" data-v="'+o[0]+'" class="'+((S.petIntro||'full')===o[0]?'on':'')+'">'+o[1]+'</button>'}).join('')+'</div>'+
+    '<div style="height:8px"></div>'+sw('petSound','Mascot voice and sounds',S.petSound!==false)+
+    sw('notify','Phone notification',S.notify)+
+    '<p class="sub" style="margin-top:8px">Warnings at '+S.warn+'% show a message at the bottom. Reaching 100% shows the alert at once, even on top of other apps.</p></section>';
+}
 function watcherCard(){
   if(!NATIVE)return '';
   var w={ago:-1};try{w=JSON.parse(window.KaavalNative.watcherStatus())}catch(e){}
@@ -736,7 +777,7 @@ function watcherCard(){
 function settingsView(){
   var u=S.ui;
   function segd(act,key,opts,cur){return '<div class="seg">'+opts.map(function(o){return '<button data-act="'+act+'" data-v="'+o[0]+'" class="'+(String(cur)===String(o[0])?'on':'')+'">'+o[1]+'</button>'}).join('')+'</div>'}
-  return permsStatusCard()+watcherCard()+
+  return permsStatusCard()+alertsCard()+watcherCard()+
   '<section class="card"><h2>Theme and language</h2>'+segd('theme','theme',[['auto','Auto'],['light','Light'],['dark','Dark']],u.theme)+
     '<div style="height:12px"></div>'+segd('lang','lang',[['en','English'],['ta','தமிழ்']],u.lang)+'</section>'+
   '<section class="card"><h2>Battery</h2>'+sw('save','Battery saver (turns off all animation and the live demo)',u.save)+
@@ -759,7 +800,7 @@ function renderNav(){
 function render(anim){
   var el=$('#view');
   el.innerHTML=V[view]();
-  el.className='view'+(anim?' enter':'');
+  el.className='view'+(anim?' enter':'')+((view==='limits'||view==='settings')?' cmp':'');
   $('#hdrDate').textContent=new Date().toLocaleDateString(loc(),{weekday:'long',day:'numeric',month:'short'});
   renderNav();
   var r=$('#ringFg');
@@ -883,13 +924,15 @@ document.addEventListener('click',function(e){
      applyLimit('hs',+d.mb);break;
    case 'sethslim':
      var hv2=parseFloat($('#hsLim').value);hsUnit=$('#hsUnit').value;
-     applyLimit('hs',hv2>0?hv2*(hsUnit==='GB'?1024:1):0);break;
+     applyLimit('hs',hv2>0?hv2*(hsUnit==='GB'?1024:1):0,hv2,hsUnit);break;
    case 'setlim':
      var lInp=document.querySelector('input[data-lim="'+d.id+'"]'),lUn=document.querySelector('select[data-limu="'+d.id+'"]');
      var lRaw=parseFloat(lInp?lInp.value:''),lMul=(lUn&&lUn.value==='GB')?1024:1;
-     applyLimit(d.id,lRaw>0?lRaw*lMul:0);break;
+     applyLimit(d.id,lRaw>0?lRaw*lMul:0,lRaw,lUn?lUn.value:'MB');break;
    case 'clearlim':applyLimit(d.id,0);break;
+   case 'seeall':more[d.k]=!more[d.k];render(false);break;
    case 'alertstyle':S.alertStyle=d.v;save();render(false);break;
+   case 'petintro':S.petIntro=d.v;save();render(false);break;
    case 'pick':openPicker(d.t);break;
    case 'pk-cancel':if(pk){S.ui=JSON.parse(pk.snap);apply()}pk=null;save();closeSheet();render(false);break;
    case 'pk-done':closeSheet();break;
@@ -969,7 +1012,20 @@ document.addEventListener('input',function(e){
   else if(k==='pkhex'&&pk){var nh=normHex(el.value);if(nh){var q2=hex2hsv(nh);pk.h=q2.h;pk.s=q2.s;pk.v=q2.v;pk.hex=nh;pkSet(pk.t,nh);apply();save();pkPaint(true,true)}}
 });
 document.addEventListener('change',function(e){
-  var el=e.target,k=el.dataset&&el.dataset.in;if(!k)return;
+  var el=e.target;
+  var lid=el.matches&&(el.matches('input[data-lim]')?el.getAttribute('data-lim'):el.matches('select[data-limu]')?el.getAttribute('data-limu'):null);
+  if(lid){
+    var li2=document.querySelector('input[data-lim="'+lid+'"]'),lu2=document.querySelector('select[data-limu="'+lid+'"]');
+    var rv=parseFloat(li2?li2.value:'');
+    if(rv>0)applyLimit(lid,rv*((lu2&&lu2.value==='GB')?1024:1),rv,lu2?lu2.value:'MB');
+    return;
+  }
+  if(el.id==='hsLim'||el.id==='hsUnit'){
+    var hv=parseFloat($('#hsLim').value);hsUnit=$('#hsUnit').value;
+    if(hv>0)applyLimit('hs',hv*(hsUnit==='GB'?1024:1),hv,hsUnit);
+    return;
+  }
+  var k=el.dataset&&el.dataset.in;if(!k)return;
   if(k==='planval'||k==='planunit'){
     planUnit=$('#planUnit').value;var pv=parseFloat($('#planVal').value);
     if(pv>0){S.plan=Math.round(pv*(planUnit==='GB'?1024:1));S.alerts={};save();render(false);toast('Daily plan: '+fs(S.plan))}
@@ -1063,7 +1119,7 @@ function pushConfig(){
   try{
     var lim={},names={};
     S.apps.forEach(function(a){names[a.id]=a.name;var L=effLimit(a);if(L)lim[a.id]=L});
-    window.KaavalNative.setConfig(JSON.stringify({plan:S.plan,warn:S.warn,popup:S.popup,notify:S.notify,wifi:S.wifi!==false,lang:S.ui.lang,style:S.alertStyle||'pet',petSound:S.petSound!==false,limits:lim,names:names}));
+    window.KaavalNative.setConfig(JSON.stringify({plan:S.plan,warn:S.warn,popup:S.popup,notify:S.notify,wifi:S.wifi!==false,lang:S.ui.lang,style:S.alertStyle||'pet',intro:S.petIntro||'full',petSound:S.petSound!==false,limits:lim,names:names}));
   }catch(e){}
 }
 function syncNative(){
