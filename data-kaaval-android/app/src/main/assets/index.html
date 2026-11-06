@@ -759,7 +759,7 @@ function alertsCard(){
     '<div class="lbl" style="margin:14px 0 8px">Alert style</div><div class="seg">'+
       [['pet','Mascot'],['full','Full screen'],['both','Both']].map(function(o){return '<button data-act="alertstyle" data-v="'+o[0]+'" class="'+((S.alertStyle||'pet')===o[0]?'on':'')+'">'+o[1]+'</button>'}).join('')+'</div>'+
     '<div class="lbl" style="margin:14px 0 8px">Mascot entrance</div><div class="seg">'+
-      [['full','Peek-a-boo (11 s)'],['quick','Quick (3 s)']].map(function(o){return '<button data-act="petintro" data-v="'+o[0]+'" class="'+((S.petIntro||'full')===o[0]?'on':'')+'">'+o[1]+'</button>'}).join('')+'</div>'+
+      [['quick','Instant (recommended)'],['full','Peek-a-boo (11 s)']].map(function(o){return '<button data-act="petintro" data-v="'+o[0]+'" class="'+((S.petIntro||'quick')===o[0]?'on':'')+'">'+o[1]+'</button>'}).join('')+'</div>'+
     '<div style="height:8px"></div>'+sw('petSound','Mascot voice and sounds',S.petSound!==false)+
     sw('notify','Phone notification',S.notify)+
     '<p class="sub" style="margin-top:8px">Warnings at '+S.warn+'% show a message at the bottom. Reaching 100% shows the alert at once, even on top of other apps.</p></section>';
@@ -1119,7 +1119,7 @@ function pushConfig(){
   try{
     var lim={},names={};
     S.apps.forEach(function(a){names[a.id]=a.name;var L=effLimit(a);if(L)lim[a.id]=L});
-    window.KaavalNative.setConfig(JSON.stringify({plan:S.plan,warn:S.warn,popup:S.popup,notify:S.notify,wifi:S.wifi!==false,lang:S.ui.lang,style:S.alertStyle||'pet',intro:S.petIntro||'full',petSound:S.petSound!==false,limits:lim,names:names}));
+    window.KaavalNative.setConfig(JSON.stringify({plan:S.plan,warn:S.warn,popup:S.popup,notify:S.notify,wifi:S.wifi!==false,lang:S.ui.lang,style:S.alertStyle||'pet',intro:S.petIntro||'quick',petSound:S.petSound!==false,limits:lim,names:names}));
   }catch(e){}
 }
 function syncNative(){

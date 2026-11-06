@@ -6,12 +6,12 @@
 html,body{margin:0;height:100%;background:transparent;overflow:hidden;-webkit-user-select:none;user-select:none;
   font-family:system-ui,-apple-system,"Noto Sans Tamil","Noto Sans",Roboto,Arial,sans-serif}
 #stage{position:fixed;inset:0;pointer-events:none;overflow:hidden;visibility:hidden}
-#aura{position:absolute;left:-30px;bottom:12px;width:260px;height:260px;border-radius:50%;opacity:0;
+#aura{position:absolute;left:-18px;bottom:24px;width:170px;height:170px;border-radius:50%;opacity:0;
   background:radial-gradient(closest-side,rgba(255,93,108,.62),rgba(255,140,80,.22) 60%,rgba(255,93,108,0) 100%)}
-#fox{position:absolute;left:8px;bottom:40px;width:190px;height:215px;transform-origin:50% 96%;will-change:transform;visibility:hidden;
+#fox{position:absolute;left:8px;bottom:40px;width:125px;height:141px;transform-origin:50% 96%;will-change:transform;visibility:hidden;
   filter:drop-shadow(0 0 12px rgba(255,150,60,.5)) drop-shadow(0 6px 8px rgba(0,0,0,.35))}
 #foxsvg{width:100%;height:100%;display:block}
-#bubble{position:absolute;left:50%;bottom:262px;height:150px;opacity:0;transform-origin:30% 100%;
+#bubble{position:absolute;left:50%;bottom:192px;height:150px;opacity:0;transform-origin:30% 100%;
   box-sizing:border-box;padding:16px 18px;border-radius:24px;border:2px solid #FF5D6C;color:#fff;
   background:linear-gradient(160deg,rgba(24,36,64,.97),rgba(10,16,34,.97));
   box-shadow:0 0 34px rgba(255,93,108,.55),inset 0 0 22px rgba(255,93,108,.16)}
@@ -91,15 +91,17 @@ var el={};['tail','armL','armR','earL','earR','pupL','pupR','lidL','lidR','browL
 var fox=$('#fox'),aura=$('#aura'),bubble=$('#bubble'),btitle=$('#btitle'),bnums=$('#bnums'),stage=$('#stage');
 var C={name:'App',nums:'',pct:100,ta:false,sound:true,title:''};
 var running=false,t0=0,speaking=false,leaving=false,leaveT=0,arrived=false,sfx={},raf=0,closedSent=false;
-var FW=190,HX=-215,HY=30,IN=520,EMERGE_MS=800;
+var FW=125,HX=-145,HY=20,IN=520,EMERGE_MS=700,LP={tx:-90,ty:14,rot:10};
 var SCH=[],EMERGE=0,ARRIVE=0;
 function bw(){return Math.min(window.innerWidth-24,360)}
 
 /* schedule: peek, 5 s gap, peek, 5 s gap, peek 2 s then come fully out (or only the last one in quick mode) */
 function plan(quick){
-  if(quick)SCH=[{k:'C',s:0,hold:1100,out:0,tx:-60,ty:18,rot:8}];
-  else SCH=[{k:'A',s:0,hold:3000,out:480,tx:-80,ty:34,rot:13},{k:'C',s:8000,hold:2000,out:0,tx:-42,ty:14,rot:7}];
-  var c=SCH[SCH.length-1];EMERGE=c.s+IN+c.hold;ARRIVE=EMERGE+EMERGE_MS;
+  if(quick){SCH=[];LP={tx:-90,ty:14,rot:10};EMERGE=0;ARRIVE=EMERGE_MS}   // instant: no peeking, straight out
+  else{
+    SCH=[{k:'A',s:0,hold:3000,out:480,tx:-53,ty:22,rot:13},{k:'C',s:8000,hold:2000,out:0,tx:-28,ty:9,rot:7}];
+    var c=SCH[SCH.length-1];LP=c;EMERGE=c.s+IN+c.hold;ARRIVE=EMERGE+EMERGE_MS;
+  }
 }
 
 /* ---------- face ---------- */
@@ -156,8 +158,8 @@ function frame(t){
   // coming fully out
   if(t>=EMERGE&&t<ARRIVE&&!leaving){
     var hp=cl((t-EMERGE)/EMERGE_MS,0,1);hidden=false;
-    var L=SCH[SCH.length-1];
-    tx=lerp(L.tx,0,eo(hp));ty=lerp(L.ty,0,eo(hp))-70*4*hp*(1-hp);rot=lerp(L.rot,0,eo(hp));paws=cl(1-hp*4,0,1);
+    var L=LP;
+    tx=lerp(L.tx,0,eo(hp));ty=lerp(L.ty,0,eo(hp))-46*4*hp*(1-hp);rot=lerp(L.rot,0,eo(hp));paws=cl(1-hp*4,0,1);
     f={open:.7,smile:.55,browY:-12,pupX:.15,pupY:-.3,pupS:1.12};armR=-130*hp+10*Math.sin(t/60)*hp;armL=130*hp-10*Math.sin(t/60)*hp;earW=-10*hp;
     if(hp>=1){var lt=0}
   }
@@ -174,7 +176,7 @@ function frame(t){
   if(leaving){
     hidden=false;
     var lp=cl((t-leaveT)/700,0,1),wv=cl(lp/.32,0,1);
-    ty=lp<.32?-16*Math.sin(wv*Math.PI):lerp(0,HY,ei((lp-.32)/.68));tx=lp<.32?0:lerp(0,HX,ei((lp-.32)/.68));
+    ty=lp<.32?-10*Math.sin(wv*Math.PI):lerp(0,HY,ei((lp-.32)/.68));tx=lp<.32?0:lerp(0,HX,ei((lp-.32)/.68));
     f={open:.3*(1-lp),smile:.9,browY:-8,pupS:1.05};armR=-100+24*Math.sin(t/70)*(1-lp);
     if(lp>=1&&!closedSent){closedSent=true;running=false;stage.style.visibility='hidden';fox.style.visibility='hidden';native('closed');return}
   }

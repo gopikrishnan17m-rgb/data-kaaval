@@ -123,7 +123,7 @@ object AlertChecker {
                 } catch (e: Exception) { JSONObject() }
                 val style = cfg.optString("style", "pet")
                 val sound = cfg.optBoolean("petSound", true)
-                val quick = cfg.optString("intro", "full") == "quick"
+                val quick = cfg.optString("intro", "quick") == "quick"
                 when (style) {
                     "full" -> OverlayManager.showLimit(ctx, title, body, nums, pct, ta)
                     "both" -> PetOverlay.show(ctx, name, nums, pct, ta, sound, quick,

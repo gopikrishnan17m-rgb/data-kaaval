@@ -269,7 +269,7 @@ object PetOverlay {
             PixelFormat.TRANSLUCENT
         )
         lp.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-        lp.y = dp(262 + 14)
+        lp.y = dp(192 + 14)
         try {
             val wm = app.getSystemService(Context.WINDOW_SERVICE) as WindowManager
             wm.addView(row, lp)
