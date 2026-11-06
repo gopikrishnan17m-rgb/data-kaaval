@@ -49,7 +49,7 @@ class MonitorService : Service() {
             val raw = getSharedPreferences("cfg", Context.MODE_PRIVATE).getString("json", null) ?: return 20000L
             val limits = JSONObject(raw).optJSONObject("limits") ?: JSONObject()
             val hasHs = limits.optDouble("hs", 0.0) > 0
-            if (interactive) return if (pending) 1500L else 15000L
+            if (interactive) return if (pending) 1000L else 15000L
             return if (hasHs && pending) 5000L else if (pending) 20000L else 60000L
         } catch (e: Exception) {
             return 10000L

@@ -107,6 +107,11 @@ class Bridge(private val activity: Activity) {
         return JSONObject().put("ago", ago).put("fg", d.getString("fg", "")).put("err", d.getString("err", "")).toString()
     }
 
+    /** Recent timing lines written by the watcher (used by the Settings timing log). */
+    @JavascriptInterface
+    fun watcherLog(): String =
+        activity.getSharedPreferences("diag", Context.MODE_PRIVATE).getString("log", "") ?: ""
+
     @JavascriptInterface
     fun maybeShowAd() {
         activity.runOnUiThread {

@@ -767,11 +767,13 @@ function alertsCard(){
 function watcherCard(){
   if(!NATIVE)return '';
   var w={ago:-1};try{w=JSON.parse(window.KaavalNative.watcherStatus())}catch(e){}
+  var wlog='';try{wlog=window.KaavalNative.watcherLog()}catch(e){}
   var ok=w.ago>=0&&w.ago<90;
   var msg=w.ago<0?'Not started yet. Keep Data Kaaval allowed in the background.':ok?('Running. Last check '+w.ago+' s ago.'):('Stopped. Last check '+Math.max(1,Math.round(w.ago/60))+' min ago. Your phone stopped it, see the steps below.');
   return '<section class="card"><h2>Limit popup on other apps</h2>'+
    '<div class="lrow"><div class="grow"><b>'+(ok?'Watcher running':'Watcher not running')+'</b><div class="sub">'+msg+'</div></div><span class="pill" style="'+(ok?'':'background:color-mix(in srgb,var(--over) 18%,transparent);color:var(--over)')+'">'+(ok?'ON':'OFF')+'</span></div>'+
    '<div class="actions" style="margin-top:12px"><button class="btn pri" data-act="native-test">Test popup (6 sec)</button><button class="btn" data-act="native-autostart">Autostart</button><button class="btn" data-act="native-appperm">App permissions</button></div>'+
+   '<details style="margin-top:12px"><summary class="sub" style="cursor:pointer">Timing log (for checking late alerts)</summary><pre style="white-space:pre-wrap;font-size:.62rem;line-height:1.35;margin:8px 0 0;color:var(--muted)">'+esc(wlog||'Nothing yet. Set a limit and use that app.')+'</pre></details>'+
    '<p class="sub" style="margin-top:12px">For the popup to appear exactly when the limit is reached: (1) Show over other apps = Allowed, (2) Autostart = ON, (3) Battery = No restrictions, (4) in Recent apps, long-press the Data Kaaval card and tap Lock. On Xiaomi, also allow Display pop-up windows while running in the background under App permissions.</p></section>';
 }
 function settingsView(){

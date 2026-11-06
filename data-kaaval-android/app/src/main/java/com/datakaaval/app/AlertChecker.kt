@@ -41,6 +41,34 @@ object AlertChecker {
         val fired = ctx.getSharedPreferences("fired", Context.MODE_PRIVATE)
         if (fired.getString("date", "") != date) fired.edit().clear().putString("date", date).apply()
 
+        // Timing log for the Settings screen: one line whenever Android's counter for a limited app changes
+        try {
+            val dg = ctx.getSharedPreferences("diag", Context.MODE_PRIVATE)
+            val nowMs = System.currentTimeMillis()
+            val sbSig = StringBuilder()
+            val sbTxt = StringBuilder()
+            val k0 = limits.keys()
+            while (k0.hasNext()) {
+                val i0 = k0.next()
+                val l0 = limits.optDouble(i0, 0.0)
+                if (l0 <= 0) continue
+                val u0 = today[i0] ?: 0.0
+                sbSig.append(i0).append(Math.round(u0 * 10)).append(';')
+                sbTxt.append(if (i0 == "hs") "Hotspot" else names.optString(i0, i0)).append(' ')
+                    .append(String.format(Locale.US, "%.1f/%.0f MB", u0, l0)).append("  ")
+            }
+            val sig = sbSig.toString()
+            if (sig.isNotEmpty() && sig != dg.getString("logSig", "")) {
+                val last = dg.getLong("logAt", nowMs)
+                val gap = (nowMs - last) / 1000
+                val stamp = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date(nowMs))
+                val line = "$stamp  ${sbTxt.toString().trim()}  (+${gap}s)"
+                val lines = (dg.getString("log", "") ?: "").split("\n").filter { it.isNotBlank() }.takeLast(29) + line
+                dg.edit().putString("log", lines.joinToString("\n")).putString("logSig", sig).putLong("logAt", nowMs).apply()
+            }
+        } catch (e: Exception) {
+        }
+
         fun once(key: String): Boolean {
             if (fired.getBoolean(key, false)) return false
             fired.edit().putBoolean(key, true).apply()
@@ -63,6 +91,12 @@ object AlertChecker {
             if (used >= lim) {
                 once("w$tag")
                 if (once("o$tag")) {
+                    try {
+                        val dg2 = ctx.getSharedPreferences("diag", Context.MODE_PRIVATE)
+                        val l2 = (dg2.getString("log", "") ?: "") + "\n" + SimpleDateFormat("HH:mm:ss", Locale.US).format(Date()) + "  >>> ALERT SHOWN for $name (${fmt(used)} / ${fmt(lim)})"
+                        dg2.edit().putString("log", l2.split("\n").filter { it.isNotBlank() }.takeLast(30).joinToString("\n")).apply()
+                    } catch (e: Exception) {
+                    }
                     val title = if (ta) "$name — வரம்பு எட்டியது" else "$name limit reached"
                     val body = if (ta) "இன்றைய வரம்பை எட்டிவிட்டீர்கள்" else "You reached today's limit"
                     alert(ctx, title, body, "${fmt(used)} / ${fmt(lim)}", pct, true, popup, notifyOn, tag.hashCode(), ta, name)
